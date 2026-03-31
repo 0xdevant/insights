@@ -126,12 +126,52 @@ export async function veniceChatJson(params: {
   }
 
   const data = (await res.json()) as {
-    choices?: Array<{ message?: { content?: string } }>;
+    model?: string;
+    choices?: Array<{
+      finish_reason?: string;
+      stop_reason?: string | null;
+      message?: {
+        content?: string | null | Array<{ type?: string; text?: string }>;
+        reasoning_content?: string | null;
+        refusal?: string | null;
+      };
+    }>;
     usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number };
   };
 
-  const text = data.choices?.[0]?.message?.content ?? "";
-  if (!text) throw new Error("Venice returned empty content");
+  const choice0 = data.choices?.[0];
+  const msg = choice0?.message;
+  if (typeof msg?.refusal === "string" && msg.refusal.trim()) {
+    throw new Error(`Venice refused: ${msg.refusal.slice(0, 500)}`);
+  }
+
+  let text = "";
+  const rawContent = msg?.content;
+  if (typeof rawContent === "string") text = rawContent;
+  else if (Array.isArray(rawContent)) {
+    text = rawContent
+      .map((p) => (typeof p === "object" && p && "text" in p ? String((p as { text?: string }).text ?? "") : ""))
+      .join("");
+  }
+  if (!text.trim() && typeof msg?.reasoning_content === "string" && msg.reasoning_content.trim()) {
+    const rc = msg.reasoning_content.trim();
+    // Some reasoning models emit JSON in reasoning_content when content is empty (provider quirk).
+    if (rc.startsWith("{") || rc.startsWith("[")) text = rc;
+  }
+
+  if (!text.trim()) {
+    const fr = choice0?.finish_reason ?? choice0?.stop_reason ?? "?";
+    const model = data.model ?? "?";
+    const hint =
+      fr === "length"
+        ? "（可能觸發輸出長度上限 — 可縮短 prompt 或換模型 / 調高上下文）"
+        : fr === "content_filter" || fr === "safety"
+          ? "（內容被過濾）"
+          : "";
+    throw new Error(
+      `Venice returned empty content（model=${model} finish_reason=${fr}${hint}）。如用推理模型，可試改 VENICE_MODEL 或關閉相關 venice_parameters。`,
+    );
+  }
 
   if (data.usage) {
     usage.promptTokens = data.usage.prompt_tokens;
