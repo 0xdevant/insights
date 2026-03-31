@@ -163,7 +163,7 @@ export function buildPaidScanPrompt(
         (hasComp ? "Competitors: on-page marketing+tech compare. " : "") +
         "Return JSON with keys: " +
         SEO_SCAN_SHAPE_PAID +
-        "`full_actions` (10–18): title, impact, effort, `steps` as objects with `text`; optional `detail`/`snippet` (plain text, facts-grounded; omit generic snippets). Order by impact×feasibility. " +
+        "`full_actions` (10–18): title, **priority** P0|P1|P2 (P0=blockers, P1=impact, P2=polish — align with `priorityFindings`), impact, effort, `steps` as objects with `text`; optional `detail`/`snippet` (plain text, facts-grounded; omit generic snippets). Order by impact×feasibility. " +
         (hasComp ? "Mention competitors only if it sharpens a fix. " : "") +
         "`conversion_notes`: implementation+QA (crawl/index/schema/links/security; messaging when facts support). " +
         "`preview_actions` (exactly 3): title, rationale, impact?, **steps** 3–6 objects — align with `full_actions` where applicable. " +

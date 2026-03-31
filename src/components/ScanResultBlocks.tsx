@@ -191,6 +191,37 @@ function impactClass(impact: string): string {
   return "bg-white/[0.06] text-foreground-subtle";
 }
 
+function normalizeFullActionPriorityToken(raw: unknown): "P0" | "P1" | "P2" | null {
+  if (typeof raw !== "string") return null;
+  const s = raw
+    .trim()
+    .toUpperCase()
+    .replace(/\uFF30/g, "P")
+    .replace(/\uFF10/g, "0")
+    .replace(/\uFF11/g, "1")
+    .replace(/\uFF12/g, "2");
+  if (s === "P0" || s === "0") return "P0";
+  if (s === "P1" || s === "1") return "P1";
+  if (s === "P2" || s === "2") return "P2";
+  return null;
+}
+
+function priorityFromImpact(impact: string): "P0" | "P1" | "P2" | null {
+  const u = impact.toLowerCase();
+  if (u === "high") return "P0";
+  if (u === "medium") return "P1";
+  if (u === "low") return "P2";
+  return null;
+}
+
+/** P0/P1/P2 from `priority` when present, else from `impact` (high→P0 …). */
+function resolveFullActionPriority(item: Record<string, unknown>): "P0" | "P1" | "P2" | null {
+  const explicit = normalizeFullActionPriorityToken(item.priority);
+  if (explicit) return explicit;
+  const impact = typeof item.impact === "string" ? item.impact : "";
+  return priorityFromImpact(impact);
+}
+
 type ParsedStep = { text: string; detail?: string; snippet?: string };
 
 function parseFullActionStep(raw: unknown): ParsedStep | null {
@@ -377,6 +408,7 @@ export function FullActionsPanel({ data }: { data: unknown }) {
         const title = typeof item.title === "string" ? item.title : `行動 ${i + 1}`;
         const impact = typeof item.impact === "string" ? item.impact : "";
         const effort = typeof item.effort === "string" ? item.effort : "";
+        const priorityP = resolveFullActionPriority(item);
         const rawSteps = Array.isArray(item.steps) ? item.steps : [];
         const steps = rawSteps
           .map(parseFullActionStep)
@@ -388,7 +420,17 @@ export function FullActionsPanel({ data }: { data: unknown }) {
             className="rounded-xl border border-white/[0.08] bg-black/25 p-4"
           >
             <p className="font-medium text-white">{title}</p>
-            <div className="mt-2 flex flex-wrap gap-2 text-[11px]">
+            <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px]">
+              {priorityP ? (
+                <span className="inline-flex items-center gap-1.5" title="優先次序（P0 最緊要）">
+                  <span className="text-[10px] font-medium text-white/45">優先</span>
+                  <span
+                    className={`rounded-md px-2 py-0.5 font-mono text-[10px] font-semibold tabular-nums ${priorityBadgeClass(priorityP)}`}
+                  >
+                    {priorityP}
+                  </span>
+                </span>
+              ) : null}
               {impact ? (
                 <span className={`rounded-md px-2 py-0.5 ${impactClass(impact)}`}>
                   影響：{impact}

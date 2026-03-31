@@ -38,7 +38,7 @@ import {
 } from "@/lib/pagespeed-insights";
 import { parseModelJsonObject } from "@/lib/parse-model-json";
 import { normalizeSeoScanForUi } from "@/lib/seo-scan-normalize";
-import { DEFAULT_VENICE_MODEL, veniceChatJson } from "@/lib/venice";
+import { resolveVeniceModel, veniceChatJson } from "@/lib/venice";
 
 const MAX_COMPETITOR_URLS = 3;
 
@@ -162,7 +162,7 @@ export async function POST(request: NextRequest) {
     );
 
     const apiKey = requireEnv("VENICE_API_KEY");
-    const model = getEnv("VENICE_MODEL") ?? DEFAULT_VENICE_MODEL;
+    const model = resolveVeniceModel();
 
     let rawCompetitorUrls = parsed.data.competitorUrls ?? [];
     let discoveryUsage: {

@@ -5,8 +5,16 @@ const VENICE_BASE = "https://api.venice.ai/api/v1";
 /** Wall-clock cap for the Venice HTTP request (large JSON can take minutes). Override via env. */
 const DEFAULT_VENICE_FETCH_TIMEOUT_MS = 180_000;
 
-/** Default when `VENICE_MODEL` is unset — GPT-5.4 Mini (Venice). Override if needed. */
-export const DEFAULT_VENICE_MODEL = "openai-gpt-54-mini";
+/**
+ * Default when `VENICE_MODEL` is unset or whitespace-only — Moonshot Kimi K2.5 (`kimi-k2-5` on Venice).
+ * Change here to switch the global default; override per deploy with `VENICE_MODEL`.
+ */
+export const DEFAULT_VENICE_MODEL = "kimi-k2-5";
+
+/** Model id for Venice `/chat/completions`: env `VENICE_MODEL`, else {@link DEFAULT_VENICE_MODEL}. */
+export function resolveVeniceModel(): string {
+  return getEnv("VENICE_MODEL") ?? DEFAULT_VENICE_MODEL;
+}
 
 /**
  * Ceiling for a single completion (`max_tokens`). Venice defaults to 16384, but large
