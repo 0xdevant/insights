@@ -43,7 +43,7 @@ In [github.com/0xdevant/crawlme](https://github.com/0xdevant/crawlme) → **Sett
 | `CLOUDFLARE_ACCOUNT_ID`          | From `npx wrangler whoami` or Workers dashboard               |
 | `CLOUDFLARE_KV_NAMESPACE_ID`     | Optional if KV id is already committed in `wrangler.jsonc`    |
 | `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | **Required** for Clerk: must match production instance (`pk_live_…`); baked into the build — without it, `/` can return **500** |
-| `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | Optional; public site key baked into the client at build time |
+| `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | **Public** Turnstile site key (`0x…`) — baked into the client at build time. **Required** if you use Turnstile: without it, the widget never renders. **Do not** put `TURNSTILE_SECRET_KEY` here (that stays on the Worker only). |
 
 After secrets are set, every push to `main` runs `.github/workflows/deploy.yml`.
 
@@ -52,6 +52,8 @@ After secrets are set, every push to `main` runs `.github/workflows/deploy.yml`.
 `VENICE_API_KEY`, **`CLERK_SECRET_KEY`** (required for auth middleware — use `sk_live_…` for production), `STRIPE_*`, `TURNSTILE_SECRET_KEY`, `FREE_GLOBAL_DAILY_SCANS`, `CRAWLME_QUOTA_BYPASS_IPS`, etc. are read at **runtime** on the Worker.
 
 **Clerk:** Set both **GitHub** `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` (build) and **Worker** `CLERK_SECRET_KEY` (runtime). Missing either often causes **Internal Server Error** on every page (middleware runs on all routes).
+
+**Turnstile:** Use **two** different keys: **`NEXT_PUBLIC_TURNSTILE_SITE_KEY`** in **GitHub Actions** (same value as Turnstile “Site Key” in the dashboard — public) and **`TURNSTILE_SECRET_KEY`** only on the **Worker** (secret key). If the Worker has the secret but GitHub never received the **public** site key, users can see「請先完成人機驗證」with **no visible widget** — add the GitHub secret and redeploy.
 
 Set them in **Workers & Pages** → **crawlme** → **Settings** → **Variables and Secrets**, or:
 
