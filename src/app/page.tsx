@@ -1,58 +1,120 @@
 import { ScanForm } from "@/components/ScanForm";
-import { CONTACT_EMAIL, SITE_URL } from "@/lib/site";
-import { THREADS_PROFILE_URL } from "@/lib/threads-constants";
+import { CLAWIFY_URL, CONTACT_EMAIL } from "@/lib/site";
+import {
+  INSTAGRAM_PROFILE_URL,
+  THREADS_PROFILE_URL,
+  THREADS_UNLOCK_POST_URL,
+} from "@/lib/threads-constants";
 
 export default function Home() {
   const mailto = `mailto:${CONTACT_EMAIL}`;
 
   return (
     <div className="relative min-h-screen overflow-hidden">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(251,191,36,0.14),_transparent_55%),radial-gradient(ellipse_at_bottom,_rgba(59,130,246,0.08),_transparent_50%)]" />
-      <main className="relative mx-auto flex max-w-3xl flex-col gap-12 px-6 py-16 sm:py-24">
-        <header className="space-y-4">
-          <p className="font-mono text-xs uppercase tracking-[0.35em] text-amber-200/80">CrawlMe</p>
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(251,191,36,0.1),_transparent_58%)]" />
+      <main
+        id="main-content"
+        className="relative mx-auto flex w-full max-w-7xl flex-col gap-12 px-4 pb-16 pt-10 sm:px-6 sm:pb-24 sm:pt-14"
+      >
+        <header className="space-y-3">
           <h1 className="text-balance text-4xl font-semibold tracking-tight text-white sm:text-5xl">
-            幫你嘅網站更易轉化、更易賣
+            拎一份專業營銷報告
           </h1>
-          <p className="text-pretty text-lg leading-relaxed text-white/65">
-            貼上公開頁面網址。CrawlMe 擷取頁面事實，並優先分析<strong className="text-white/80">營銷說服力、轉化阻力同下一步行動</strong>
-            （其次先係技術／搜尋可見度）。免費版有概覽同 3 條預覽；Pro 解鎖完整優先清單同轉化筆記。
-          </p>
+          <ul className="list-none space-y-2 pl-0 text-pretty text-lg leading-relaxed text-foreground-muted">
+            <li>
+              <span aria-hidden>🔍 </span>
+              <strong className="font-medium text-white/90">SEO 分析</strong>
+            </li>
+            <li>
+              <span aria-hidden>📊 </span>
+              <strong className="font-medium text-white/90">市場＋競爭對手分析</strong>
+            </li>
+            <li>
+              <span aria-hidden>🛠️ </span>
+              仲會直接俾你「<strong className="font-medium text-white/90">可以落手做</strong>」嘅技術建議
+            </li>
+          </ul>
+          <div
+            className="inline-flex max-w-full flex-wrap items-center gap-x-2 gap-y-1 rounded-lg border border-amber-400/20 bg-amber-400/[0.06] px-3 py-2 text-xs leading-snug text-amber-100/90"
+            role="note"
+          >
+            <span className="shrink-0 font-medium text-amber-200/95">額度</span>
+            <span className="text-amber-50/90">
+              每次分析都會出<strong className="font-medium text-amber-100/95">完整行動清單</strong>
+              同<strong className="font-medium text-amber-100/95">優先建議</strong>
+              。<strong className="font-medium text-amber-100/95">體驗額度</strong>
+              ：每個 IP 限做 1 次分析；全站每日總名額有限（先到先得）。
+            </span>
+          </div>
         </header>
 
         <ScanForm />
 
-        <footer className="border-t border-white/10 pt-10 text-sm text-white/60">
+        <footer className="border-t border-white/10 pt-10 text-sm text-foreground-muted">
+          <div className="mb-10 flex flex-wrap items-baseline gap-x-3 gap-y-2 border-b border-white/[0.06] pb-8 text-xs">
+            <span className="shrink-0 text-foreground-subtle">想支持我哋：</span>
+            <a
+              href={THREADS_UNLOCK_POST_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="crawlme-focus-ring rounded-sm font-medium text-amber-200/90 underline decoration-amber-400/30 underline-offset-2 hover:text-amber-100"
+            >
+              幫手留 comment
+            </a>
+            <span className="text-white/25">·</span>
+            <span className="text-foreground-subtle">追蹤</span>
+            <a
+              href={THREADS_PROFILE_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="crawlme-focus-ring rounded-sm font-medium text-amber-200/90 underline decoration-amber-400/30 underline-offset-2 hover:text-amber-100"
+            >
+              Threads
+            </a>
+            <span className="text-white/25">·</span>
+            <a
+              href={INSTAGRAM_PROFILE_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="crawlme-focus-ring rounded-sm font-medium text-amber-200/90 underline decoration-amber-400/30 underline-offset-2 hover:text-amber-100"
+            >
+              Instagram
+            </a>
+            <span className="text-foreground-subtle">（@pls.clawify）</span>
+          </div>
           <div className="grid gap-10 sm:grid-cols-2">
-            <div className="space-y-3">
-              <h2 className="text-xs font-semibold uppercase tracking-wider text-white/80">聯絡我們</h2>
-              <p className="text-xs leading-relaxed text-white/55">
+            <div className="space-y-2">
+              <h2 className="text-xs font-semibold uppercase tracking-wider text-white/80">
+                聯絡我們
+              </h2>
+              <p className="text-xs leading-relaxed text-foreground-muted">
                 有合作、媒體或產品問題，歡迎聯絡。
               </p>
-              <ul className="flex flex-col gap-2 text-xs">
-                <li>
-                  <a href={mailto} className="text-amber-200/90 underline decoration-amber-400/35 underline-offset-2 hover:text-amber-100">
-                    {CONTACT_EMAIL}
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href={THREADS_PROFILE_URL}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-violet-300/95 underline decoration-violet-400/35 underline-offset-2 hover:text-violet-200"
-                  >
-                    Threads — @pls.clawify
-                  </a>
-                </li>
-                <li className="font-mono text-[11px] text-white/40">{SITE_URL}</li>
-              </ul>
+              <div className="flex flex-col gap-1 text-xs">
+                <a
+                  href={mailto}
+                  className="crawlme-focus-ring w-fit rounded-sm text-amber-200/90 underline decoration-amber-400/35 underline-offset-2 hover:text-amber-100"
+                >
+                  {CONTACT_EMAIL}
+                </a>
+                <a
+                  href={CLAWIFY_URL}
+                  className="crawlme-focus-ring w-fit rounded-sm font-mono text-[11px] text-foreground-subtle underline decoration-white/10 underline-offset-2 transition hover:text-foreground-muted"
+                >
+                  {CLAWIFY_URL}
+                </a>
+              </div>
             </div>
             <div className="space-y-3">
-              <h2 className="text-xs font-semibold uppercase tracking-wider text-white/80">免責聲明</h2>
-              <p className="text-xs leading-relaxed text-white/50">
-                CrawlMe 以自動化方式擷取你提供嘅公開網址內容，並整理成建議；<strong className="text-white/65">唔構成法律、財務、稅務或專業顧問意見</strong>
-                ，亦<strong className="text-white/65">不保證</strong>
+              <h2 className="text-xs font-semibold uppercase tracking-wider text-white/80">
+                免責聲明
+              </h2>
+              <p className="text-xs leading-relaxed text-foreground-subtle">
+                CrawlMe 以自動化方式擷取你提供嘅公開網址內容，並整理成建議；
+                <strong className="text-foreground-muted">
+                  唔構成法律、財務、稅務或專業顧問意見
+                </strong>
+                ，亦<strong className="text-foreground-muted">不保證</strong>
                 搜尋排名、流量、轉化率、銷售或任何商業結果。你應自行判斷同承擔使用建議嘅風險。服務可能會變更或中斷，恕不另行通知。
               </p>
             </div>

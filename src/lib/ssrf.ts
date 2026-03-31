@@ -58,6 +58,10 @@ export function isBlockedHostname(hostname: string): boolean {
   return false;
 }
 
+/** DNS JSON `type` values (RFC 1035 / common public DNS). */
+const DNS_TYPE_A = 1;
+const DNS_TYPE_AAAA = 28;
+
 async function dnsJsonLookup(name: string, type: "A" | "AAAA"): Promise<string[]> {
   const url = new URL("https://cloudflare-dns.com/dns-query");
   url.searchParams.set("name", name);
@@ -68,9 +72,13 @@ async function dnsJsonLookup(name: string, type: "A" | "AAAA"): Promise<string[]
   });
   if (!res.ok) return [];
   const data = (await res.json()) as {
-    Answer?: Array<{ data: string }>;
+    Answer?: Array<{ data: string; type?: number }>;
   };
-  return (data.Answer ?? []).map((a) => a.data).filter(Boolean);
+  const wantType = type === "A" ? DNS_TYPE_A : DNS_TYPE_AAAA;
+  return (data.Answer ?? [])
+    .filter((a) => Number(a.type) === wantType)
+    .map((a) => a.data.trim())
+    .filter(Boolean);
 }
 
 export async function assertPublicHostname(hostname: string): Promise<void> {

@@ -1,5 +1,8 @@
 const VENICE_BASE = "https://api.venice.ai/api/v1";
 
+/** Default when `VENICE_MODEL` is unset — GPT-5.4 Mini (Venice). Override if needed. */
+export const DEFAULT_VENICE_MODEL = "openai-gpt-54-mini";
+
 export type VeniceUsage = {
   promptTokens?: number;
   completionTokens?: number;

@@ -11,9 +11,13 @@ export async function GET(request: NextRequest) {
     const stripe = getStripe();
     const session = await stripe.checkout.sessions.retrieve(sessionId);
     const customerId =
-      typeof session.customer === "string" ? session.customer : session.customer?.id;
+      typeof session.customer === "string"
+        ? session.customer
+        : session.customer?.id;
     if (!customerId) {
-      return NextResponse.redirect(new URL("/?billing=no_customer", request.url));
+      return NextResponse.redirect(
+        new URL("/?billing=no_customer", request.url),
+      );
     }
 
     const res = NextResponse.redirect(new URL("/?subscribed=1", request.url));

@@ -44,21 +44,29 @@ export async function POST(request: NextRequest) {
       }
       case "checkout.session.completed": {
         const session = event.data.object as Stripe.Checkout.Session;
+        const customerId =
+          typeof session.customer === "string" ? session.customer : session.customer?.id;
+        if (!customerId) break;
+
+        if (session.mode === "payment" && session.payment_status === "paid") {
+          await setSubscriptionForCustomer(customerId, {
+            active: true,
+            status: "paid",
+          });
+          break;
+        }
+
         if (session.mode === "subscription") {
-          const customerId =
-            typeof session.customer === "string" ? session.customer : session.customer?.id;
-          if (customerId) {
-            const stripe = getStripe();
-            const subs = await stripe.subscriptions.list({ customer: customerId, limit: 3 });
-            const first = subs.data[0];
-            if (first) {
-              await setSubscriptionForCustomer(customerId, {
-                active: first.status === "active" || first.status === "trialing",
-                status: first.status,
-                currentPeriodEnd: first.items.data[0]?.current_period_end,
-                priceId: first.items.data[0]?.price.id,
-              });
-            }
+          const stripe = getStripe();
+          const subs = await stripe.subscriptions.list({ customer: customerId, limit: 3 });
+          const first = subs.data[0];
+          if (first) {
+            await setSubscriptionForCustomer(customerId, {
+              active: first.status === "active" || first.status === "trialing",
+              status: first.status,
+              currentPeriodEnd: first.items.data[0]?.current_period_end,
+              priceId: first.items.data[0]?.price.id,
+            });
           }
         }
         break;

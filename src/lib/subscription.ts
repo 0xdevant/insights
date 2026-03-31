@@ -51,9 +51,12 @@ export async function setSubscriptionForCustomer(
   }
 }
 
-export function isActiveSubscription(record: SubscriptionRecord | null | undefined): boolean {
+export function isActiveSubscription(
+  record: SubscriptionRecord | null | undefined,
+): boolean {
   if (!record) return false;
   if (!record.active) return false;
+  /** One-time Stripe payments omit `currentPeriodEnd` → treat as lifetime access. */
   if (record.currentPeriodEnd && record.currentPeriodEnd * 1000 < Date.now()) {
     return false;
   }

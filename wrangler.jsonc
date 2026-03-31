@@ -3,6 +3,9 @@
 	"main": ".open-next/worker.js",
 	"name": "crawlme",
 	"compatibility_date": "2026-03-29",
+	"observability": {
+		"enabled": true
+	},
 	"compatibility_flags": [
 		"nodejs_compat",
 		"global_fetch_strictly_public"
@@ -39,7 +42,7 @@
 		{
 			"binding": "CRAWLME_KV",
 			// Replace with your namespace id from: wrangler kv namespace create CRAWLME_KV
-			"id": "00000000000000000000000000000000"
+			"id": "a45d4bd1cf9c4e8abaef49c6202df287"
 		}
 	]
 }

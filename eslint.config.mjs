@@ -1,16 +1,11 @@
-import { dirname } from "path";
-import { fileURLToPath } from "url";
-import { FlatCompat } from "@eslint/eslintrc";
+import { createRequire } from "node:module";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+const require = createRequire(import.meta.url);
 
-const compat = new FlatCompat({
-  baseDirectory: __dirname,
-});
+const next = require("eslint-config-next/core-web-vitals");
 
-const eslintConfig = [
-  ...compat.extends("next/core-web-vitals", "next/typescript"),
+/** Flat config from Next — avoid FlatCompat (circular JSON bug with ESLint 9). */
+export default [
+  { ignores: [".open-next/**"] },
+  ...next,
 ];
-
-export default eslintConfig;

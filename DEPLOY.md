@@ -1,0 +1,79 @@
+# Production deploy (Cloudflare Workers + OpenNext)
+
+CrawlMe runs on **Cloudflare Workers** via [`@opennextjs/cloudflare`](https://opennext.js.org/cloudflare). This file lists what you must do once; CI deploys on every push to `main` when GitHub secrets are set.
+
+## 1. One-time: Cloudflare resources
+
+Run locally (after `npx wrangler login`) or use the dashboard.
+
+### KV (required for quotas / subscription keys in production)
+
+```bash
+npx wrangler kv namespace create CRAWLME_KV
+```
+
+Copy the **id** into `wrangler.jsonc` → `kv_namespaces[0].id`, **or** add it as GitHub secret `CLOUDFLARE_KV_NAMESPACE_ID` (workflow replaces the placeholder `0000…`).
+
+### R2 (OpenNext incremental cache)
+
+```bash
+npx wrangler r2 bucket create crawlme-opennext-cache
+```
+
+Name must match `wrangler.jsonc` → `r2_buckets[0].bucket_name`.
+
+### API token (for GitHub Actions)
+
+In Cloudflare Dashboard → **My Profile** → **API Tokens** → create a token with:
+
+- **Workers Scripts: Edit**
+- **Account Settings: Read** (if needed for account id)
+- **Workers KV Storage: Edit**
+- **Workers R2 Storage: Edit** (if using R2)
+
+Or use a template that includes **Cloudflare Workers** deploy permissions.
+
+## 2. GitHub repository secrets
+
+In [github.com/0xdevant/crawlme](https://github.com/0xdevant/crawlme) → **Settings** → **Secrets and variables** → **Actions** → **New repository secret**:
+
+| Secret                           | Purpose                                                       |
+| -------------------------------- | ------------------------------------------------------------- |
+| `CLOUDFLARE_API_TOKEN`           | Wrangler deploy — create under [API Tokens](https://dash.cloudflare.com/profile/api-tokens) (Workers + KV + R2 as needed) |
+| `CLOUDFLARE_ACCOUNT_ID`          | From `npx wrangler whoami` or Workers dashboard               |
+| `CLOUDFLARE_KV_NAMESPACE_ID`     | Optional if KV id is already committed in `wrangler.jsonc`    |
+| `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | Optional; public site key baked into the client at build time |
+
+After secrets are set, every push to `main` runs `.github/workflows/deploy.yml`.
+
+## 3. Worker secrets & vars (runtime)
+
+`VENICE_API_KEY`, `STRIPE_*`, `TURNSTILE_SECRET_KEY`, `FREE_GLOBAL_DAILY_SCANS`, `CRAWLME_QUOTA_BYPASS_IPS`, etc. are read at **runtime** on the Worker.
+
+Set them in **Workers & Pages** → **crawlme** → **Settings** → **Variables and Secrets**, or:
+
+```bash
+npx wrangler secret put VENICE_API_KEY
+# repeat for each secret
+```
+
+Use the same names as `.env.example`. Do **not** commit real values.
+
+## 4. Domain & URLs
+
+1. **Workers** → **crawlme** → **Custom domains** → add `seo.clawify.dev` (or your hostname).
+2. Set **`NEXT_PUBLIC_APP_URL`** (and production env) to that URL for checkout redirects.
+3. **Stripe** Dashboard → webhook endpoint: `https://<your-domain>/api/webhooks/stripe`.
+
+## 5. Deploy
+
+- **Automatic:** push to `main` (workflow `.github/workflows/deploy.yml`).
+- **Manual:** `npm run deploy` locally (requires `wrangler` auth and env).
+
+## 6. Smoke checks
+
+- `GET /` loads.
+- Free scan (with Turnstile if enabled) returns JSON.
+- KV binding works (quota not falling back to per-instance memory in multi-region).
+
+If deploy fails on **KV id**, fix the id in `wrangler.jsonc` or set `CLOUDFLARE_KV_NAMESPACE_ID`.

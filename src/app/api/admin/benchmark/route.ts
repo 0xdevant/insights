@@ -5,7 +5,7 @@ import { extractSeoFacts } from "@/lib/seo-extract";
 import { fetchPageHtml } from "@/lib/seo-fetch";
 import { buildPaidScanPrompt } from "@/lib/scan-prompts";
 import { normalizeAndAssertSafeUrl } from "@/lib/ssrf";
-import { veniceChatJson } from "@/lib/venice";
+import { DEFAULT_VENICE_MODEL, veniceChatJson } from "@/lib/venice";
 
 const bodySchema = z.object({
   urls: z.array(z.string().min(4)).min(1).max(10),
@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
   }
 
   const apiKey = requireEnv("VENICE_API_KEY");
-  const model = getEnv("VENICE_MODEL") ?? "venice-uncensored";
+  const model = getEnv("VENICE_MODEL") ?? DEFAULT_VENICE_MODEL;
 
   const runs: Array<{
     url: string;
@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
         html: page.html,
         headerPairs: page.headerPairs,
       });
-      const messages = buildPaidScanPrompt(facts);
+      const messages = buildPaidScanPrompt(facts, []);
       const { usage } = await veniceChatJson({
         apiKey,
         model,

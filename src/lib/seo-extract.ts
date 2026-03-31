@@ -11,6 +11,8 @@ export type SeoFacts = {
   charset: string | null;
   viewport: string | null;
   ogTitle: string | null;
+  /** Brand / site label when present (often cleaner than the page title). */
+  ogSiteName: string | null;
   ogDescription: string | null;
   ogImage: string | null;
   twitterCard: string | null;
@@ -24,6 +26,16 @@ export type SeoFacts = {
   hasJsonLd: boolean;
   jsonLdTypes: string[];
   approximateWordCount: number;
+  /** Derived from final URL — snapshot only, not a full TLS audit. */
+  isHttps: boolean;
+  /** HTTP response header, if present — complements HTML robots meta. */
+  xRobotsTag: string | null;
+  /** Presence flags from response headers (helpful for technical SEO checklist). */
+  securityHeadersPresent: {
+    hsts: boolean;
+    csp: boolean;
+    xFrameOptions: boolean;
+  };
   responseHeaders: Record<string, string>;
 };
 
@@ -214,6 +226,10 @@ export function extractSeoFacts(input: {
     headers[k.toLowerCase()] = v;
   }
 
+  const hsts = headers["strict-transport-security"];
+  const isHttps = finalUrl.toLowerCase().startsWith("https:");
+  const xRobotsRaw = headers["x-robots-tag"] ?? null;
+
   return {
     url,
     finalUrl,
@@ -227,6 +243,7 @@ export function extractSeoFacts(input: {
     charset: extractCharset(html),
     viewport: extractMetaContent(html, "viewport"),
     ogTitle: extractMetaProperty(html, "og:title"),
+    ogSiteName: extractMetaProperty(html, "og:site_name"),
     ogDescription: extractMetaProperty(html, "og:description"),
     ogImage: extractMetaProperty(html, "og:image"),
     twitterCard: extractMetaContent(html, "twitter:card") ?? extractMetaProperty(html, "twitter:card"),
@@ -240,6 +257,13 @@ export function extractSeoFacts(input: {
     hasJsonLd,
     jsonLdTypes,
     approximateWordCount: words.length,
+    isHttps,
+    xRobotsTag: xRobotsRaw,
+    securityHeadersPresent: {
+      hsts: Boolean(hsts && /max-age=/i.test(hsts)),
+      csp: Boolean(headers["content-security-policy"]),
+      xFrameOptions: Boolean(headers["x-frame-options"]),
+    },
     responseHeaders: headers,
   };
 }

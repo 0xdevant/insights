@@ -47,3 +47,6 @@ next-env.d.ts
 
 # OpenNext
 .open-next
+
+# clerk configuration (can include secrets)
+/.clerk/

@@ -5,6 +5,10 @@
 :root {
   --background: #07080b;
   --foreground: #f4f4f5;
+  /* ~WCAG AA vs --background for normal text (use for body-secondary / disclaimers) */
+  --foreground-muted: #c4c4cc;
+  --foreground-subtle: #a8a8b3;
+  --ring-focus: rgba(251, 191, 36, 0.72);
 }
 
 body {
@@ -13,7 +17,79 @@ body {
   font-family: var(--font-noto-tc), var(--font-dm-sans), "PingFang HK", "Microsoft JhengHei", system-ui, sans-serif;
 }
 
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+@keyframes crawlme-progress-indeterminate {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(320%);
+  }
+}
+
+.crawlme-progress-indeterminate {
+  animation: crawlme-progress-indeterminate 1.35s ease-in-out infinite;
+}
+
 .font-mono {
   font-family: var(--font-jetbrains), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
     "Courier New", monospace;
+}
+
+/** Keyboard focus ring — pair with interactive links/buttons (see AuthHeader). */
+.crawlme-focus-ring:focus-visible {
+  outline: 2px solid var(--ring-focus);
+  outline-offset: 2px;
+}
+
+/** First focusable control: skip past sticky header to #main-content */
+.skip-link {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+.skip-link:focus {
+  position: fixed;
+  left: 1rem;
+  top: 1rem;
+  z-index: 100;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  width: auto;
+  height: auto;
+  margin: 0;
+  overflow: visible;
+  clip: auto;
+  white-space: normal;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  background: #fbbf24;
+  color: #18181b;
+  font-size: 0.875rem;
+  font-weight: 600;
+  outline: 2px solid var(--ring-focus);
+  outline-offset: 2px;
 }
