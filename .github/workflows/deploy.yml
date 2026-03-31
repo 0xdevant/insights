@@ -23,6 +23,8 @@ jobs:
       NODE_ENV: production
       # Public URL for Next.js build (Turnstile return / Stripe success redirects)
       NEXT_PUBLIC_APP_URL: https://seo.clawify.dev
+      # Clerk: publishable key must be present at build time (embedded in client bundle)
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
       # Optional: set in repo secrets so the client bundle includes Turnstile
       NEXT_PUBLIC_TURNSTILE_SITE_KEY: ${{ secrets.NEXT_PUBLIC_TURNSTILE_SITE_KEY }}
 

@@ -42,13 +42,16 @@ In [github.com/0xdevant/crawlme](https://github.com/0xdevant/crawlme) → **Sett
 | `CLOUDFLARE_API_TOKEN`           | Wrangler deploy — create under [API Tokens](https://dash.cloudflare.com/profile/api-tokens) (Workers + KV + R2 as needed) |
 | `CLOUDFLARE_ACCOUNT_ID`          | From `npx wrangler whoami` or Workers dashboard               |
 | `CLOUDFLARE_KV_NAMESPACE_ID`     | Optional if KV id is already committed in `wrangler.jsonc`    |
+| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | **Required** for Clerk: must match production instance (`pk_live_…`); baked into the build — without it, `/` can return **500** |
 | `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | Optional; public site key baked into the client at build time |
 
 After secrets are set, every push to `main` runs `.github/workflows/deploy.yml`.
 
 ## 3. Worker secrets & vars (runtime)
 
-`VENICE_API_KEY`, `STRIPE_*`, `TURNSTILE_SECRET_KEY`, `FREE_GLOBAL_DAILY_SCANS`, `CRAWLME_QUOTA_BYPASS_IPS`, etc. are read at **runtime** on the Worker.
+`VENICE_API_KEY`, **`CLERK_SECRET_KEY`** (required for auth middleware — use `sk_live_…` for production), `STRIPE_*`, `TURNSTILE_SECRET_KEY`, `FREE_GLOBAL_DAILY_SCANS`, `CRAWLME_QUOTA_BYPASS_IPS`, etc. are read at **runtime** on the Worker.
+
+**Clerk:** Set both **GitHub** `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` (build) and **Worker** `CLERK_SECRET_KEY` (runtime). Missing either often causes **Internal Server Error** on every page (middleware runs on all routes).
 
 Set them in **Workers & Pages** → **crawlme** → **Settings** → **Variables and Secrets**, or:
 
@@ -77,3 +80,8 @@ Use the same names as `.env.example`. Do **not** commit real values.
 - KV binding works (quota not falling back to per-instance memory in multi-region).
 
 If deploy fails on **KV id**, fix the id in `wrangler.jsonc` or set `CLOUDFLARE_KV_NAMESPACE_ID`.
+
+### Internal Server Error (500) on `GET /`
+
+1. **Clerk:** Confirm `CLERK_SECRET_KEY` is set on the Worker and `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` is in GitHub Actions secrets (redeploy after adding). Keys must be from the **same** Clerk production instance.
+2. **Cloudflare Workers** → **crawlme** → **Logs** → look for the thrown message (often Clerk or missing env).
