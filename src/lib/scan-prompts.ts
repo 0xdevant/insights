@@ -1,16 +1,17 @@
 import type { SeoFacts } from "@/lib/seo-extract";
+import { slimSeoFactsForVenicePrompt } from "@/lib/seo-facts-prompt";
 
 /** Compact JSON — pretty-print burns prompt tokens with no benefit to the model. */
 function factsBlock(facts: SeoFacts): string {
-  return JSON.stringify(facts);
+  return JSON.stringify(slimSeoFactsForVenicePrompt(facts));
 }
 
 function competitorFactsBlock(competitors: SeoFacts[]): string {
-  return JSON.stringify(competitors);
+  return JSON.stringify(competitors.map(slimSeoFactsForVenicePrompt));
 }
 
 function additionalSiteFactsBlock(pages: SeoFacts[]): string {
-  return JSON.stringify(pages);
+  return JSON.stringify(pages.map(slimSeoFactsForVenicePrompt));
 }
 
 /**
