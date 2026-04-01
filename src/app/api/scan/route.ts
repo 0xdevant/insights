@@ -23,6 +23,7 @@ import {
   getMaxExtraSitePages,
   pickExtraPagesToCrawl,
 } from "@/lib/site-pages-crawl";
+import { formatErrorCauseChain } from "@/lib/error-cause";
 import { getClientIp } from "@/lib/request-ip";
 import { buildPaidScanPrompt } from "@/lib/scan-prompts";
 import {
@@ -411,8 +412,13 @@ export async function POST(request: NextRequest) {
         : {}),
     });
   } catch (e) {
-    console.error("[api/scan]", e);
-    const message = e instanceof Error ? e.message : "發生錯誤";
+    const detail = formatErrorCauseChain(e);
+    if (e instanceof Error) {
+      console.error("[api/scan]", detail, e.stack ?? "");
+    } else {
+      console.error("[api/scan]", detail);
+    }
+    const message = e instanceof Error ? detail : "發生錯誤";
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

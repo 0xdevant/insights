@@ -1,5 +1,6 @@
 import { Agent, fetch as undiciFetch } from "undici";
 
+import { formatErrorCauseChain } from "@/lib/error-cause";
 import { getEnv } from "@/lib/env";
 
 const VENICE_BASE = "https://api.venice.ai/api/v1";
@@ -157,7 +158,11 @@ export async function veniceChatJson(params: {
         `Venice 請求逾時（>${Math.round(timeoutMs / 1000)} 秒）。可調高 VENICE_FETCH_TIMEOUT_MS；若仍慢，可暫設 INSIGHTS_COMPETITOR_DISCOVERY=model 跳過對手搜尋前嘅額外 Venice 呼叫；或稍後重試。`,
       );
     }
-    throw e;
+    const detail = formatErrorCauseChain(e);
+    console.error("[venice_fetch_failed]", detail);
+    throw new Error(
+      `無法連線至 Venice API（${detail}）。請稍後重試，或檢查 api.venice.ai 狀態／網絡。`,
+    );
   }
 
   const headers = headerSnapshot(res.headers);
