@@ -32,7 +32,7 @@ const jetbrains = JetBrains_Mono({
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
-  title: "Insights — 拎一份專業營銷報告",
+  title: "Insights — 免費分析你的網站表現",
   description: `SEO、市場、競爭對手同 AI 分析，加上可落手做嘅技術建議。貼上公開頁面網址拎報告。每次分析包括完整行動清單同優先建議。${QUOTA_TRIAL_BODY}歡迎幫手留 comment，並追蹤 Threads 同 Instagram（@pls.clawify）支持我哋。`,
   openGraph: {
     url: SITE_URL,

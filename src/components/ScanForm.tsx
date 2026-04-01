@@ -622,7 +622,7 @@ export function ScanForm() {
                     id="hero-heading"
                     className="font-headline text-balance text-3xl font-bold tracking-tight text-on-surface sm:text-4xl md:text-5xl"
                   >
-                    拎一份專業營銷報告
+                    拎網站營銷診斷報告
                   </h1>
                   <p className="mx-auto max-w-xl text-pretty text-base leading-relaxed text-foreground-muted sm:text-lg">
                     SEO、市場、競爭對手同 AI 分析，加上可以落手做嘅技術建議。
