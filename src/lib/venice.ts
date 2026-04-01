@@ -1,23 +1,16 @@
-import { Agent, fetch as undiciFetch } from "undici";
-
 import { formatErrorCauseChain } from "@/lib/error-cause";
 import { getEnv } from "@/lib/env";
 
 const VENICE_BASE = "https://api.venice.ai/api/v1";
 
 /**
- * Node's fetch (Undici) applies its own `headersTimeout` / `bodyTimeout` (defaults are long in
- * recent Node, but gaps between streamed chunks can still trip `bodyTimeout`). Venice LLM
- * responses can stall between tokens — disable Undici's per-phase limits and rely only on
- * {@link AbortSignal.timeout} for wall-clock caps.
+ * Use the runtime's global `fetch` (Cloudflare Workers + Node 18+). Do **not** use Undici's
+ * `Agent`/`dispatcher` here — workerd throws `The options.ALPNProtocols option is not implemented`
+ * when Undici tries to open TLS with options the edge runtime doesn't support.
+ * Wall-clock limit only: {@link AbortSignal.timeout}.
  */
-const veniceDispatcher = new Agent({
-  headersTimeout: 0,
-  bodyTimeout: 0,
-});
-
-/** Wall-clock cap for the Venice HTTP request (large JSON can take minutes). Override via env. */
-const DEFAULT_VENICE_FETCH_TIMEOUT_MS = 300_000;
+/** Wall-clock cap for each Venice `chat/completions` request (large JSON can take minutes). */
+const VENICE_FETCH_TIMEOUT_MS = 300_000;
 
 /**
  * Default when `VENICE_MODEL` is unset or whitespace-only — Moonshot Kimi K2.5 (`kimi-k2-5` on Venice).
@@ -46,12 +39,6 @@ function headerSnapshot(headers: {
     out[k.toLowerCase()] = v;
   });
   return out;
-}
-
-function parseTimeoutMs(raw: string | undefined, fallback: number): number {
-  if (!raw?.trim()) return fallback;
-  const n = Number.parseInt(raw.trim(), 10);
-  return Number.isFinite(n) && n >= 10_000 ? n : fallback;
 }
 
 type VeniceChoice = {
@@ -108,15 +95,8 @@ export async function veniceChatJson(params: {
    * `max_tokens` ≤ 0 is ignored in favor of the model maximum).
    */
   maxCompletionTokens?: number;
-  /** Override `VENICE_FETCH_TIMEOUT_MS` / default 300s. */
-  fetchTimeoutMs?: number;
 }): Promise<{ text: string; usage: VeniceUsage }> {
-  const timeoutMs =
-    params.fetchTimeoutMs ??
-    parseTimeoutMs(
-      getEnv("VENICE_FETCH_TIMEOUT_MS"),
-      DEFAULT_VENICE_FETCH_TIMEOUT_MS,
-    );
+  const timeoutMs = VENICE_FETCH_TIMEOUT_MS;
 
   const modelId = params.model?.trim() || DEFAULT_VENICE_MODEL;
 
@@ -131,9 +111,9 @@ export async function veniceChatJson(params: {
     payload.max_completion_tokens = params.maxCompletionTokens;
   }
 
-  let res: Awaited<ReturnType<typeof undiciFetch>>;
+  let res: Response;
   try {
-    res = await undiciFetch(`${VENICE_BASE}/chat/completions`, {
+    res = await fetch(`${VENICE_BASE}/chat/completions`, {
       method: "POST",
       headers: {
         authorization: `Bearer ${params.apiKey}`,
@@ -141,7 +121,6 @@ export async function veniceChatJson(params: {
       },
       body: JSON.stringify(payload),
       signal: AbortSignal.timeout(timeoutMs),
-      dispatcher: veniceDispatcher,
     });
   } catch (e) {
     const name = e instanceof Error ? e.name : "";
@@ -151,11 +130,11 @@ export async function veniceChatJson(params: {
         JSON.stringify({
           timeoutMs,
           model: modelId,
-          hint: "Wall-clock only; Undici timeouts disabled. Raise VENICE_FETCH_TIMEOUT_MS or set INSIGHTS_COMPETITOR_DISCOVERY=model to skip extra Venice calls before the main scan.",
+          hint: "Wall-clock only (AbortSignal.timeout). Set INSIGHTS_COMPETITOR_DISCOVERY=model to skip extra Venice calls before the main scan, or retry later.",
         }),
       );
       throw new Error(
-        `Venice 請求逾時（>${Math.round(timeoutMs / 1000)} 秒）。可調高 VENICE_FETCH_TIMEOUT_MS；若仍慢，可暫設 INSIGHTS_COMPETITOR_DISCOVERY=model 跳過對手搜尋前嘅額外 Venice 呼叫；或稍後重試。`,
+        `Venice 請求逾時（>${Math.round(timeoutMs / 1000)} 秒）。可暫設 INSIGHTS_COMPETITOR_DISCOVERY=model 跳過對手搜尋前嘅額外 Venice 呼叫，或稍後重試。`,
       );
     }
     const detail = formatErrorCauseChain(e);

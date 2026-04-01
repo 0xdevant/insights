@@ -22,28 +22,53 @@ import {
 
 /** Lazy: only loads after a successful scan (smaller initial / home chunk). */
 const SeoScanPanel = dynamic(
-  () => import("@/components/ScanResultBlocks").then((m) => ({ default: m.SeoScanPanel })),
+  () =>
+    import("@/components/ScanResultBlocks").then((m) => ({
+      default: m.SeoScanPanel,
+    })),
   { loading: () => <PanelChunkSkeleton /> },
 );
 const CompetitorAnalysisPanel = dynamic(
-  () => import("@/components/ScanResultBlocks").then((m) => ({ default: m.CompetitorAnalysisPanel })),
+  () =>
+    import("@/components/ScanResultBlocks").then((m) => ({
+      default: m.CompetitorAnalysisPanel,
+    })),
   { loading: () => <PanelChunkSkeleton /> },
 );
 const FullActionsPanel = dynamic(
-  () => import("@/components/ScanResultBlocks").then((m) => ({ default: m.FullActionsPanel })),
+  () =>
+    import("@/components/ScanResultBlocks").then((m) => ({
+      default: m.FullActionsPanel,
+    })),
   { loading: () => <PanelChunkSkeleton /> },
 );
 const UnifiedScorePanel = dynamic(
-  () => import("@/components/ScanResultBlocks").then((m) => ({ default: m.UnifiedScorePanel })),
+  () =>
+    import("@/components/ScanResultBlocks").then((m) => ({
+      default: m.UnifiedScorePanel,
+    })),
   { loading: () => <PanelChunkSkeleton /> },
 );
 const CompetitorSitesRow = dynamic(
-  () => import("@/components/ScanResultBlocks").then((m) => ({ default: m.CompetitorSitesRow })),
-  { loading: () => <div className="mt-4 h-12 animate-pulse rounded-xl bg-surface-container-high" aria-hidden /> },
+  () =>
+    import("@/components/ScanResultBlocks").then((m) => ({
+      default: m.CompetitorSitesRow,
+    })),
+  {
+    loading: () => (
+      <div
+        className="mt-4 h-12 animate-pulse rounded-xl bg-surface-container-high"
+        aria-hidden
+      />
+    ),
+  },
 );
 /** Code-split marketing section (icons + bento) from main ScanForm bundle. */
 const ReportDepthSection = dynamic(
-  () => import("@/components/ReportDepthSection").then((m) => ({ default: m.ReportDepthSection })),
+  () =>
+    import("@/components/ReportDepthSection").then((m) => ({
+      default: m.ReportDepthSection,
+    })),
   {
     loading: () => (
       <div
@@ -60,7 +85,9 @@ const Turnstile = dynamic(
 );
 const PriorityFindingsPreview = dynamic(
   () =>
-    import("@/components/ScanResultBlocks").then((m) => ({ default: m.PriorityFindingsPreview })),
+    import("@/components/ScanResultBlocks").then((m) => ({
+      default: m.PriorityFindingsPreview,
+    })),
   { loading: () => <PanelChunkSkeleton /> },
 );
 
@@ -98,7 +125,9 @@ function SocialSupportStrip() {
         幫手留 comment
       </a>
       <div className="inline-flex max-w-full flex-wrap items-center gap-1.5 rounded-lg border border-primary/25 bg-surface-container-lowest px-2 py-1.5">
-        <span className="shrink-0 pl-0.5 text-[11px] text-primary/80">追蹤</span>
+        <span className="shrink-0 pl-0.5 text-[11px] text-primary/80">
+          追蹤
+        </span>
         <a
           href={THREADS_PROFILE_URL}
           target="_blank"
@@ -188,24 +217,39 @@ function sessionScanStorageKey(userId: string): string {
 }
 
 /** Last successful scan in this tab — survives refresh; cleared when tab closes or user starts a new scan. */
-function persistLastScanSession(userId: string, scannedUrl: string, data: ScanResponse): void {
+function persistLastScanSession(
+  userId: string,
+  scannedUrl: string,
+  data: ScanResponse,
+): void {
   if (typeof window === "undefined") return;
   try {
     sessionStorage.setItem(
       sessionScanStorageKey(userId),
-      JSON.stringify({ v: 1, url: scannedUrl, result: data, savedAt: Date.now() }),
+      JSON.stringify({
+        v: 1,
+        url: scannedUrl,
+        result: data,
+        savedAt: Date.now(),
+      }),
     );
   } catch {
     // Quota, private mode, or payload too large for sessionStorage
   }
 }
 
-function loadLastScanSession(userId: string): { url: string; result: ScanResponse } | null {
+function loadLastScanSession(
+  userId: string,
+): { url: string; result: ScanResponse } | null {
   if (typeof window === "undefined") return null;
   try {
     const raw = sessionStorage.getItem(sessionScanStorageKey(userId));
     if (!raw) return null;
-    const parsed = JSON.parse(raw) as { v?: number; url?: string; result?: ScanResponse };
+    const parsed = JSON.parse(raw) as {
+      v?: number;
+      url?: string;
+      result?: ScanResponse;
+    };
     if (
       parsed.v !== 1 ||
       typeof parsed.url !== "string" ||
@@ -272,12 +316,17 @@ export function ScanForm() {
   const [userAlreadyUsedFree, setUserAlreadyUsedFree] = useState(false);
   const [deviceAlreadyUsedFree, setDeviceAlreadyUsedFree] = useState(false);
   const [deviceId, setDeviceId] = useState<string | null>(null);
-  const [freeGlobalRemaining, setFreeGlobalRemaining] = useState<number | null>(null);
+  const [freeGlobalRemaining, setFreeGlobalRemaining] = useState<number | null>(
+    null,
+  );
   const [freeGlobalLimit, setFreeGlobalLimit] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<ScanResponse | null>(null);
   const unified = useMemo(
-    () => (result ? computeUnifiedScore(result.pagespeed_insights, result.seo_scan) : null),
+    () =>
+      result
+        ? computeUnifiedScore(result.pagespeed_insights, result.seo_scan)
+        : null,
     [result],
   );
   const [error, setError] = useState<string | null>(null);
@@ -310,9 +359,13 @@ export function ScanForm() {
           setUserAlreadyUsedFree(!!d.userAlreadyUsedFree);
           setDeviceAlreadyUsedFree(!!d.deviceAlreadyUsedFree);
           setFreeGlobalRemaining(
-            typeof d.freeGlobalRemaining === "number" ? d.freeGlobalRemaining : null,
+            typeof d.freeGlobalRemaining === "number"
+              ? d.freeGlobalRemaining
+              : null,
           );
-          setFreeGlobalLimit(typeof d.freeGlobalLimit === "number" ? d.freeGlobalLimit : null);
+          setFreeGlobalLimit(
+            typeof d.freeGlobalLimit === "number" ? d.freeGlobalLimit : null,
+          );
         },
       )
       .catch(() => {
@@ -372,7 +425,8 @@ export function ScanForm() {
         return;
       }
 
-      const effectiveTurnstileToken = opts?.turnstileTokenOverride ?? turnstileToken;
+      const effectiveTurnstileToken =
+        opts?.turnstileTokenOverride ?? turnstileToken;
       if (needsTurnstile && !effectiveTurnstileToken) {
         setError("需要人機驗證。");
         return;
@@ -381,10 +435,15 @@ export function ScanForm() {
       setResult(null);
       setLoading(true);
       try {
-        const body: { url: string; turnstileToken?: string; deviceId?: string } = {
+        const body: {
+          url: string;
+          turnstileToken?: string;
+          deviceId?: string;
+        } = {
           url: withHttpsScheme(url),
         };
-        if (needsTurnstile && effectiveTurnstileToken) body.turnstileToken = effectiveTurnstileToken;
+        if (needsTurnstile && effectiveTurnstileToken)
+          body.turnstileToken = effectiveTurnstileToken;
         if (deviceId) body.deviceId = deviceId;
 
         const res = await fetch("/api/scan", {
@@ -413,7 +472,10 @@ export function ScanForm() {
           persistLastScanSession(userId, withHttpsScheme(url), data);
         }
         if (typeof data.paid === "boolean") setPaid(data.paid);
-        if (data.paid === false && typeof data.freeGlobalRemaining === "number") {
+        if (
+          data.paid === false &&
+          typeof data.freeGlobalRemaining === "number"
+        ) {
           setFreeGlobalRemaining(data.freeGlobalRemaining);
         }
         if (typeof data.freeGlobalLimit === "number") {
@@ -430,7 +492,17 @@ export function ScanForm() {
         setLoading(false);
       }
     },
-    [deviceId, isLoaded, isSignedIn, needsTurnstile, openSignIn, refreshMe, turnstileToken, url, userId],
+    [
+      deviceId,
+      isLoaded,
+      isSignedIn,
+      needsTurnstile,
+      openSignIn,
+      refreshMe,
+      turnstileToken,
+      url,
+      userId,
+    ],
   );
 
   const handleFormSubmit = useCallback(
@@ -485,156 +557,174 @@ export function ScanForm() {
     <div className="flex flex-col gap-10">
       {showMarketingHero ? (
         <>
-        <section
-          className="rounded-[1.75rem] bg-secondary-container px-5 py-10 shadow-ambient sm:px-10 sm:py-12"
-          aria-labelledby="hero-heading"
-        >
-          <div className="mx-auto max-w-3xl text-center">
-            <header className="space-y-4">
-              <h1
-                id="hero-heading"
-                className="font-headline text-balance text-3xl font-bold tracking-tight text-on-surface sm:text-4xl md:text-5xl"
-              >
-                拎一份專業營銷報告
-              </h1>
-              <p className="mx-auto max-w-xl text-pretty text-base leading-relaxed text-foreground-muted sm:text-lg">
-                SEO、市場、競爭對手同 AI 分析，加上可以落手做嘅技術建議。
-              </p>
-            </header>
+          <section
+            className="rounded-[1.75rem] bg-secondary-container px-5 py-10 shadow-ambient sm:px-10 sm:py-12"
+            aria-labelledby="hero-heading"
+          >
+            <div className="mx-auto max-w-3xl text-center">
+              <header className="space-y-4">
+                <h1
+                  id="hero-heading"
+                  className="font-headline text-balance text-3xl font-bold tracking-tight text-on-surface sm:text-4xl md:text-5xl"
+                >
+                  拎一份專業營銷報告
+                </h1>
+                <p className="mx-auto max-w-xl text-pretty text-base leading-relaxed text-foreground-muted sm:text-lg">
+                  SEO、市場、競爭對手同 AI 分析，加上可以落手做嘅技術建議。
+                </p>
+              </header>
 
-            {!isLoaded ? (
-              <div className="mx-auto mt-8 max-w-2xl">
-                <div className="h-[52px] animate-pulse rounded-full bg-surface-container-high" aria-hidden />
-                <p className="sr-only">載入帳戶狀態…</p>
-              </div>
-            ) : (
-              <form
-                className="mx-auto mt-8 flex max-w-2xl flex-col gap-4 text-center"
-                onSubmit={handleFormSubmit}
-              >
-                <label className="sr-only" htmlFor="url">
-                  要分析嘅頁面網址
-                </label>
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-stretch sm:justify-center">
-                  <input
-                    id="url"
-                    name="url"
-                    type="text"
-                    inputMode="url"
-                    autoComplete="url"
-                    spellCheck={false}
-                    placeholder="輸入網址，例如 example.com"
-                    value={url}
-                    onChange={(e) => setUrl(e.target.value)}
-                    aria-describedby={!isSignedIn ? "auth-before-scan" : undefined}
-                    className="min-h-[52px] w-full min-w-0 flex-1 rounded-full border border-primary/20 bg-surface-container-lowest px-6 py-3.5 text-center text-base text-on-surface shadow-sm outline-none ring-0 placeholder:text-foreground-subtle focus:border-primary/35 focus:ring-2 focus:ring-primary/15 sm:text-left"
+              {!isLoaded ? (
+                <div className="mx-auto mt-8 max-w-2xl">
+                  <div
+                    className="h-[52px] animate-pulse rounded-full bg-surface-container-high"
+                    aria-hidden
                   />
-                  <button
-                    type="submit"
-                    disabled={!canSubmit || loading}
-                    className="insights-focus-ring min-h-[52px] shrink-0 rounded-full bg-gradient-to-b from-primary to-primary-container px-8 py-3.5 text-sm font-semibold text-on-primary shadow-sm transition hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-40"
-                  >
-                    開始分析
-                  </button>
+                  <p className="sr-only">載入帳戶狀態…</p>
                 </div>
-                {!isSignedIn ? (
-                  <p id="auth-before-scan" className="text-xs text-foreground-muted">
-                    撳「開始分析」會請你先<strong className="text-on-surface">登入或註冊</strong>
-                    ；登入後會用同一個網址繼續。
-                  </p>
-                ) : null}
-                {needsTurnstile && !isSignedIn ? (
-                  <p className="text-xs text-foreground-muted">
-                    免費掃描受 Cloudflare Turnstile 保護：請先<strong className="text-on-surface">登入</strong>
-                    ，登入後撳「開始分析」會先做人機驗證（如需要）。
-                  </p>
-                ) : null}
-                {needsTurnstile && isSignedIn ? (
-                  <div className="space-y-2 pt-2">
-                    {turnstileError ? (
-                      <p className="text-xs text-red-600/95" role="alert">
-                        {turnstileError}
-                      </p>
-                    ) : null}
-                    <div className="mx-auto min-h-0 w-fit max-w-full [&_iframe]:rounded-md">
-                      <Turnstile
-                        ref={turnstileRef}
-                        siteKey={turnstileSiteKey as string}
-                        options={{
-                          theme: "light",
-                          appearance: "execute",
-                          execution: "execute",
-                        }}
-                        onSuccess={(token) => {
-                          setTurnstileError(null);
-                          setTurnstileToken(token);
-                          if (pendingSubmitAfterTurnstileRef.current) {
-                            pendingSubmitAfterTurnstileRef.current = false;
-                            void runScan({ turnstileTokenOverride: token });
-                          }
-                        }}
-                        onExpire={() => {
-                          setTurnstileToken(null);
-                          pendingSubmitAfterTurnstileRef.current = false;
-                        }}
-                        onError={() => {
-                          pendingSubmitAfterTurnstileRef.current = false;
-                          setTurnstileError(
-                            "驗證載入唔到。試重新整理頁面，或者暫停擋廣告／私隱外掛，同埋允許 challenges.cloudflare.com。",
-                          );
-                        }}
-                      />
-                    </div>
+              ) : (
+                <form
+                  className="mx-auto mt-8 flex max-w-2xl flex-col gap-4 text-center"
+                  onSubmit={handleFormSubmit}
+                >
+                  <label className="sr-only" htmlFor="url">
+                    要分析嘅頁面網址
+                  </label>
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-stretch sm:justify-center">
+                    <input
+                      id="url"
+                      name="url"
+                      type="text"
+                      inputMode="url"
+                      autoComplete="url"
+                      spellCheck={false}
+                      placeholder="輸入網址，例如 example.com"
+                      value={url}
+                      onChange={(e) => setUrl(e.target.value)}
+                      aria-describedby={
+                        !isSignedIn ? "auth-before-scan" : undefined
+                      }
+                      className="min-h-[52px] w-full min-w-0 flex-1 rounded-full border border-primary/20 bg-surface-container-lowest px-6 py-3.5 text-center text-base text-on-surface shadow-sm outline-none ring-0 placeholder:text-foreground-subtle focus:border-primary/35 focus:ring-2 focus:ring-primary/15 sm:text-left"
+                    />
+                    <button
+                      type="submit"
+                      disabled={!canSubmit || loading}
+                      className="insights-focus-ring min-h-[52px] shrink-0 rounded-full bg-gradient-to-b from-primary to-primary-container px-8 py-3.5 text-sm font-semibold text-on-primary shadow-sm transition hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      開始分析
+                    </button>
                   </div>
-                ) : null}
-                {isSignedIn &&
-                (paid === true ||
-                  (!quotaBypass &&
-                    (userAlreadyUsedFree || deviceAlreadyUsedFree || ipAlreadyUsedFree)) ||
-                  (!quotaBypass && freeGlobalRemaining !== null && freeGlobalLimit !== null) ||
-                  (isDev &&
-                    quotaBypass &&
-                    freeGlobalRemaining !== null &&
-                    freeGlobalLimit !== null)) ? (
-                  <div className="space-y-3 rounded-xl border border-outline-variant/15 bg-surface-container-lowest px-3 py-3 text-left text-xs text-foreground-muted shadow-sm">
-                    {paid === true ? (
-                      <p className="text-foreground-subtle">你嘅帳戶唔受體驗額度限制。</p>
-                    ) : !quotaBypass && userAlreadyUsedFree ? (
-                      <p className="text-primary">
-                        此帳戶已用過體驗額度。聯絡我哋或留意訂閱方案。
-                      </p>
-                    ) : !quotaBypass && deviceAlreadyUsedFree ? (
-                      <p className="text-primary">
-                        呢部瀏覽器／裝置已用過體驗額度。清除本站資料或換另一個瀏覽器檔案仍可能受其他限制。
-                      </p>
-                    ) : !quotaBypass && ipAlreadyUsedFree ? (
-                      <p className="text-primary">
-                        呢個 IP 已用過體驗額度。聽日再試、換網絡，或聯絡我哋。
-                      </p>
-                    ) : freeGlobalRemaining !== null &&
-                      freeGlobalLimit !== null &&
-                      (!quotaBypass || isDev) ? (
-                      <div className="border-l-2 border-primary/35 pl-3">
-                        <p className="font-medium text-primary">額度說明</p>
-                        <p className="mt-1 text-foreground-subtle">
-                          每個帳戶一次體驗；全站今日尚餘{" "}
-                          <span className="font-semibold tabular-nums text-primary">{freeGlobalRemaining}</span>
-                          ／{freeGlobalLimit} 個名額（先到先得）。
+                  {!isSignedIn ? (
+                    <p
+                      id="auth-before-scan"
+                      className="text-xs text-foreground-muted"
+                    >
+                      撳「開始分析」會請你先
+                      <strong className="text-on-surface">登入或註冊</strong>
+                      ；登入後會用同一個網址繼續。
+                    </p>
+                  ) : null}
+                  {needsTurnstile && !isSignedIn ? (
+                    <p className="text-xs text-foreground-muted">
+                      免費掃描受 Cloudflare Turnstile 保護：請先
+                      <strong className="text-on-surface">登入</strong>
+                      ，登入後撳「開始分析」會先做人機驗證（如需要）。
+                    </p>
+                  ) : null}
+                  {needsTurnstile && isSignedIn ? (
+                    <div className="space-y-2 pt-2">
+                      {turnstileError ? (
+                        <p className="text-xs text-red-600/95" role="alert">
+                          {turnstileError}
                         </p>
-                        {quotaBypass && isDev ? (
-                          <p className="mt-2 text-[10px] leading-snug text-on-surface-variant">
-                            開發模式：本機已略過額度限制，仍可照常分析。
-                          </p>
-                        ) : null}
+                      ) : null}
+                      <div className="mx-auto min-h-0 w-fit max-w-full [&_iframe]:rounded-md">
+                        <Turnstile
+                          ref={turnstileRef}
+                          siteKey={turnstileSiteKey as string}
+                          options={{
+                            theme: "light",
+                            appearance: "execute",
+                            execution: "execute",
+                          }}
+                          onSuccess={(token) => {
+                            setTurnstileError(null);
+                            setTurnstileToken(token);
+                            if (pendingSubmitAfterTurnstileRef.current) {
+                              pendingSubmitAfterTurnstileRef.current = false;
+                              void runScan({ turnstileTokenOverride: token });
+                            }
+                          }}
+                          onExpire={() => {
+                            setTurnstileToken(null);
+                            pendingSubmitAfterTurnstileRef.current = false;
+                          }}
+                          onError={() => {
+                            pendingSubmitAfterTurnstileRef.current = false;
+                            setTurnstileError(
+                              "驗證載入唔到。試重新整理頁面，或者暫停擋廣告／私隱外掛，同埋允許 challenges.cloudflare.com。",
+                            );
+                          }}
+                        />
                       </div>
-                    ) : null}
-                  </div>
-                ) : null}
-              </form>
-            )}
-          </div>
-        </section>
-        <ReportDepthSection />
+                    </div>
+                  ) : null}
+                  {isSignedIn &&
+                  (paid === true ||
+                    (!quotaBypass &&
+                      (userAlreadyUsedFree ||
+                        deviceAlreadyUsedFree ||
+                        ipAlreadyUsedFree)) ||
+                    (!quotaBypass &&
+                      freeGlobalRemaining !== null &&
+                      freeGlobalLimit !== null) ||
+                    (isDev &&
+                      quotaBypass &&
+                      freeGlobalRemaining !== null &&
+                      freeGlobalLimit !== null)) ? (
+                    <div className="space-y-3 rounded-xl border border-outline-variant/15 bg-surface-container-lowest px-3 py-3 text-left text-xs text-foreground-muted shadow-sm">
+                      {paid === true ? (
+                        <p className="text-foreground-subtle">
+                          你嘅帳戶唔受體驗額度限制。
+                        </p>
+                      ) : !quotaBypass && userAlreadyUsedFree ? (
+                        <p className="text-primary">
+                          此帳戶已用過體驗額度。聯絡我哋或留意訂閱方案。
+                        </p>
+                      ) : !quotaBypass && deviceAlreadyUsedFree ? (
+                        <p className="text-primary">
+                          呢部瀏覽器／裝置已用過體驗額度。清除本站資料或換另一個瀏覽器檔案仍可能受其他限制。
+                        </p>
+                      ) : !quotaBypass && ipAlreadyUsedFree ? (
+                        <p className="text-primary">
+                          呢個 IP 已用過體驗額度。聽日再試、換網絡，或聯絡我哋。
+                        </p>
+                      ) : freeGlobalRemaining !== null &&
+                        freeGlobalLimit !== null &&
+                        (!quotaBypass || isDev) ? (
+                        <div className="border-l-2 border-primary/35 pl-3">
+                          <p className="font-medium text-primary">額度說明</p>
+                          <p className="mt-1 text-foreground-subtle">
+                            每個帳戶一次體驗；全站今日尚餘{" "}
+                            <span className="font-semibold tabular-nums text-primary">
+                              {freeGlobalRemaining}
+                            </span>
+                            ／{freeGlobalLimit} 個名額（先到先得）。
+                          </p>
+                          {quotaBypass && isDev ? (
+                            <p className="mt-2 text-[10px] leading-snug text-on-surface-variant">
+                              開發模式：本機已略過額度限制，仍可照常分析。
+                            </p>
+                          ) : null}
+                        </div>
+                      ) : null}
+                    </div>
+                  ) : null}
+                </form>
+              )}
+            </div>
+          </section>
+          <ReportDepthSection />
         </>
       ) : null}
 
@@ -661,7 +751,9 @@ export function ScanForm() {
                   {i + 1}
                 </span>
                 <span className="min-w-0">
-                  <span className="font-medium text-on-surface">{step.title}</span>
+                  <span className="font-medium text-on-surface">
+                    {step.title}
+                  </span>
                   <span className="mt-0.5 block leading-relaxed text-foreground-subtle">
                     {step.detail}
                   </span>
@@ -759,7 +851,8 @@ export function ScanForm() {
               營銷審計
             </a>
             {(result.competitor_analysis != null ||
-              (Array.isArray(result.competitor_facts) && result.competitor_facts.length > 0) ||
+              (Array.isArray(result.competitor_facts) &&
+                result.competitor_facts.length > 0) ||
               result.competitor_discovery?.mode === "automatic") && (
               <>
                 <span className="text-outline-variant">·</span>
@@ -806,7 +899,9 @@ export function ScanForm() {
                 id="report-audit"
                 className="scroll-mt-24 rounded-2xl border border-outline-variant/20 bg-surface-container-low p-6"
               >
-                <h2 className="text-lg font-semibold tracking-tight text-on-surface">營銷審計</h2>
+                <h2 className="text-lg font-semibold tracking-tight text-on-surface">
+                  營銷審計
+                </h2>
                 <p className="mt-1 text-[11px] leading-relaxed text-foreground-subtle">
                   按今次抓到嘅頁面內容，檢視內容、結構、搜尋可見度同技術表現（只反映呢次快照）。
                 </p>
@@ -821,7 +916,8 @@ export function ScanForm() {
 
             <div className="flex flex-col gap-6 lg:col-span-5">
               {result.competitor_analysis != null ||
-              (Array.isArray(result.competitor_facts) && result.competitor_facts.length > 0) ||
+              (Array.isArray(result.competitor_facts) &&
+                result.competitor_facts.length > 0) ||
               result.competitor_discovery?.mode === "automatic" ? (
                 <div
                   id="report-competitors"
@@ -831,7 +927,9 @@ export function ScanForm() {
                     你嘅競爭對手
                   </h2>
                   {result.competitor_discovery?.mode === "user" ? (
-                    <p className="mt-2 text-xs text-foreground-subtle">用你提供嘅網址做對照。</p>
+                    <p className="mt-2 text-xs text-foreground-subtle">
+                      用你提供嘅網址做對照。
+                    </p>
                   ) : null}
                   <CompetitorSitesRow facts={result.competitor_facts} />
                   <div className="mt-4">
@@ -850,7 +948,9 @@ export function ScanForm() {
               id="report-preview"
               className="scroll-mt-24 rounded-2xl border border-outline-variant/20 bg-surface-container-low p-6"
             >
-              <h2 className="text-lg font-semibold tracking-tight text-on-surface">建議先睇</h2>
+              <h2 className="text-lg font-semibold tracking-tight text-on-surface">
+                建議先睇
+              </h2>
               <PriorityFindingsPreview data={result.seo_scan} />
               {(result.preview_actions ?? []).length === 0 ? (
                 <p className="mt-4 text-sm text-foreground-muted">
@@ -859,7 +959,8 @@ export function ScanForm() {
               ) : null}
               <ul className="mt-4 grid gap-3 text-sm text-on-surface lg:grid-cols-2 lg:gap-4">
                 {(result.preview_actions ?? []).map((a, i) => {
-                  const imp = typeof a.impact === "string" ? a.impact.toLowerCase() : "";
+                  const imp =
+                    typeof a.impact === "string" ? a.impact.toLowerCase() : "";
                   const impactClass =
                     imp === "high"
                       ? "bg-red-500/15 text-error ring-1 ring-red-400/25"
@@ -874,7 +975,9 @@ export function ScanForm() {
                       className="rounded-xl border border-outline-variant/15 bg-surface-container-lowest px-4 py-3"
                     >
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="font-medium text-on-surface">{a.title ?? "行動"}</span>
+                        <span className="font-medium text-on-surface">
+                          {a.title ?? "行動"}
+                        </span>
                         {imp ? (
                           <span
                             className={`rounded-md px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${impactClass}`}
@@ -884,7 +987,9 @@ export function ScanForm() {
                         ) : null}
                       </div>
                       {a.rationale ? (
-                        <p className="mt-2 text-foreground-muted leading-relaxed">{a.rationale}</p>
+                        <p className="mt-2 text-foreground-muted leading-relaxed">
+                          {a.rationale}
+                        </p>
                       ) : null}
                       <PreviewActionImplementationSteps steps={a.steps} />
                     </li>
@@ -899,7 +1004,9 @@ export function ScanForm() {
             >
               <details className="group">
                 <summary className="insights-focus-ring flex cursor-pointer list-none items-center justify-between gap-3 p-6 [&::-webkit-details-marker]:hidden">
-                  <h2 className="text-lg font-semibold tracking-tight text-on-surface">完整行動清單</h2>
+                  <h2 className="text-lg font-semibold tracking-tight text-on-surface">
+                    完整行動清單
+                  </h2>
                   <span className="shrink-0 text-xs text-foreground-muted transition group-open:text-primary">
                     <span className="group-open:hidden">展開</span>
                     <span className="hidden group-open:inline">收埋</span>

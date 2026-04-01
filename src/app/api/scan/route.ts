@@ -47,7 +47,7 @@ import { resolveVeniceModel, veniceChatJson } from "@/lib/venice";
 
 const MAX_COMPETITOR_URLS = 3;
 
-/** Next.js / edge: allow long scans (crawl + large JSON to Venice). Must exceed Venice wall-clock; see `VENICE_FETCH_TIMEOUT_MS`. */
+/** Next.js / edge: allow long scans (crawl + large JSON to Venice). Must exceed Venice wall-clock (~5 min). */
 export const maxDuration = 600;
 
 const bodySchema = z.object({
@@ -84,7 +84,9 @@ export async function POST(request: NextRequest) {
 
     const rawDevice = parsed.data.deviceId?.trim();
     const validDeviceId =
-      rawDevice && z.string().uuid().safeParse(rawDevice).success ? rawDevice : undefined;
+      rawDevice && z.string().uuid().safeParse(rawDevice).success
+        ? rawDevice
+        : undefined;
 
     const ip = getClientIp(request);
     if (turnstileSecret) {
@@ -124,8 +126,7 @@ export async function POST(request: NextRequest) {
       if (await isUserFreeScanUsed(userId)) {
         return NextResponse.json(
           {
-            error:
-              "此帳戶已使用過體驗額度內嘅分析。聯絡我哋或留意訂閱方案。",
+            error: "此帳戶已使用過體驗額度內嘅分析。聯絡我哋或留意訂閱方案。",
             upgrade: true,
             userFreeExhausted: true,
           },
@@ -148,8 +149,7 @@ export async function POST(request: NextRequest) {
       if (validDeviceId && (await isDeviceFreeScanUsed(validDeviceId))) {
         return NextResponse.json(
           {
-            error:
-              "呢部裝置／瀏覽器已使用過體驗額度內嘅分析。聯絡我哋。",
+            error: "呢部裝置／瀏覽器已使用過體驗額度內嘅分析。聯絡我哋。",
             upgrade: true,
             deviceFreeExhausted: true,
           },
@@ -163,8 +163,7 @@ export async function POST(request: NextRequest) {
       if (!q.allowed) {
         return NextResponse.json(
           {
-            error:
-              "今日全站體驗名額已滿，聽日再試。",
+            error: "今日全站體驗名額已滿，聽日再試。",
             remaining: 0,
             upgrade: true,
             globalQuotaExhausted: true,
@@ -200,11 +199,13 @@ export async function POST(request: NextRequest) {
     const model = resolveVeniceModel();
 
     let rawCompetitorUrls = parsed.data.competitorUrls ?? [];
-    let discoveryUsage: {
-      promptTokens?: number;
-      completionTokens?: number;
-      totalTokens?: number;
-    } | undefined;
+    let discoveryUsage:
+      | {
+          promptTokens?: number;
+          completionTokens?: number;
+          totalTokens?: number;
+        }
+      | undefined;
 
     let competitorDiscovery: {
       mode: "user" | "automatic" | "none";
@@ -222,9 +223,11 @@ export async function POST(request: NextRequest) {
     /** Extra same-site fetches run in parallel with automatic competitor discovery (only needs primary `facts`). */
     const extraPagesPromise = (async () => {
       const additionalSiteFacts: SeoFacts[] = [];
-      const siteCrawlPages: Array<{ url: string; ok: boolean; error?: string }> = [
-        { url: page.finalUrl, ok: true },
-      ];
+      const siteCrawlPages: Array<{
+        url: string;
+        ok: boolean;
+        error?: string;
+      }> = [{ url: page.finalUrl, ok: true }];
       for (const href of extraUrls) {
         try {
           const u = await normalizeAndAssertSafeUrl(href);
@@ -258,7 +261,10 @@ export async function POST(request: NextRequest) {
             model,
           }).then((auto) => ({ kind: "auto" as const, auto }));
 
-    const [extraResult, disc] = await Promise.all([extraPagesPromise, discoveryPromise]);
+    const [extraResult, disc] = await Promise.all([
+      extraPagesPromise,
+      discoveryPromise,
+    ]);
 
     const { additionalSiteFacts, siteCrawlPages } = extraResult;
 
@@ -294,7 +300,11 @@ export async function POST(request: NextRequest) {
 
     const seen = new Set<string>([safe.href]);
     const competitorFactsList: SeoFacts[] = [];
-    const competitorFetchNotes: Array<{ url: string; ok: boolean; error?: string }> = [];
+    const competitorFetchNotes: Array<{
+      url: string;
+      ok: boolean;
+      error?: string;
+    }> = [];
 
     for (const raw of rawCompetitorUrls.slice(0, MAX_COMPETITOR_URLS)) {
       const trimmed = raw.trim();
@@ -302,7 +312,11 @@ export async function POST(request: NextRequest) {
       try {
         const cSafe = await normalizeAndAssertSafeUrl(trimmed);
         if (seen.has(cSafe.href)) {
-          competitorFetchNotes.push({ url: trimmed, ok: false, error: "duplicate_or_same_as_primary" });
+          competitorFetchNotes.push({
+            url: trimmed,
+            ok: false,
+            error: "duplicate_or_same_as_primary",
+          });
           continue;
         }
         seen.add(cSafe.href);
@@ -323,7 +337,11 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const messages = buildPaidScanPrompt(facts, competitorFactsList, additionalSiteFacts);
+    const messages = buildPaidScanPrompt(
+      facts,
+      competitorFactsList,
+      additionalSiteFacts,
+    );
 
     const psiKey = getEnv("GOOGLE_PAGESPEED_API_KEY");
     const psiPromise = psiKey
@@ -353,10 +371,13 @@ export async function POST(request: NextRequest) {
       pagespeedInsights = psi;
       text = out.text;
       usage = {
-        promptTokens: (discoveryUsage?.promptTokens ?? 0) + (out.usage.promptTokens ?? 0),
+        promptTokens:
+          (discoveryUsage?.promptTokens ?? 0) + (out.usage.promptTokens ?? 0),
         completionTokens:
-          (discoveryUsage?.completionTokens ?? 0) + (out.usage.completionTokens ?? 0),
-        totalTokens: (discoveryUsage?.totalTokens ?? 0) + (out.usage.totalTokens ?? 0),
+          (discoveryUsage?.completionTokens ?? 0) +
+          (out.usage.completionTokens ?? 0),
+        totalTokens:
+          (discoveryUsage?.totalTokens ?? 0) + (out.usage.totalTokens ?? 0),
         cfRay: out.usage.cfRay,
       };
     } catch (e) {
