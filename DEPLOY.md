@@ -63,6 +63,10 @@ After secrets are set, every push to `main` runs `.github/workflows/deploy.yml`.
 
 **Turnstile:** Use **two** different keys: **`NEXT_PUBLIC_TURNSTILE_SITE_KEY`** in **GitHub Actions** (same value as Turnstile “Site Key” in the dashboard — public) and **`TURNSTILE_SECRET_KEY`** only on the **Worker** (secret key). If the Worker has the secret but GitHub never received the **public** site key, users can see「請先完成人機驗證」with **no visible widget** — add the GitHub secret and redeploy.
 
+**Turnstile hostname:** In [Cloudflare Turnstile](https://dash.cloudflare.com/?to=/:account/turnstile) → your widget → **Hostname Management**, add **`seo.clawify.dev`** (and `www.seo.clawify.dev` if you use it). If the production hostname is missing, the iframe may not render or will error.
+
+**Turnstile widget not showing after login:** (1) Confirm **`NEXT_PUBLIC_TURNSTILE_SITE_KEY`** is set as a **GitHub Actions** secret and redeploy — it is inlined at **build** time; setting only `TURNSTILE_SECRET_KEY` on the Worker is not enough for the client widget. (2) Confirm hostname allowlist above. (3) The widget appears **after** sign-in; logged-out users see an explanation first.
+
 Set them in **Workers & Pages** → **insights** → **Settings** → **Variables and Secrets**, or:
 
 ```bash

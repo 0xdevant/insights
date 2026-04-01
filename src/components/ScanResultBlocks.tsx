@@ -774,10 +774,11 @@ const PSI_CATS: {
   { key: "seo", labelEn: "SEO", labelZh: "搜尋（Lab）" },
 ];
 
+/** Filled segment of the track — avoid `tertiary-fixed` on light grey (contrast too low for 90+ scores). */
 function psiBarClass(score: number): string {
-  if (score >= 90) return "bg-tertiary-fixed/90";
+  if (score >= 90) return "bg-primary";
   if (score >= 50) return "bg-primary/80";
-  return "bg-red-400/75";
+  return "bg-red-500/80";
 }
 
 /**

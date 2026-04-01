@@ -30,6 +30,16 @@ const HK_TRADITIONAL_CHINESE_ONLY =
   "**Chinese (all `seo_scan`, actions, hooks, `competitor_analysis`):** **香港繁體** only — **no 简体** (e.g. 网络、质量、应该、点击、登录). HK: 網絡、質素、應該、點擊、登入；**無須／毋須、編碼** not 无需、编码. " +
   "If PAGE_FACTS use 简体 in title/meta/headings, **rewrite in 繁體** in prose; **≤1** short verbatim quote for evidence. No mixed 繁+简 in one sentence. JSON keys: camelCase English. ";
 
+/**
+ * Plain readable 書面語 — stakeholder-facing; matches /clarify-style goals (concrete, no unexplained jargon).
+ */
+const WRITTEN_CHINESE_CLARITY =
+  "**Prose style (書面語、易讀):** Use **formal HK 繁體書面語** — clear and professional, not 口語堆砌 or slogan-like hype. " +
+  "**Short sentences** where possible; **one main point per sentence**; avoid repeating the same opening in `executiveSummary` vs `summary`. " +
+  "**Explain terms on first mention** in plain 繁體 (e.g. 規範網址（canonical）、結構化資料（JSON-LD）、最大內容渲染（LCP）) — do **not** leave English-only acronyms in body text without a Chinese gloss. " +
+  "**Concrete actions:** prefer「改寫標題以…」「補上圖片替代文字」over vague「優化」「提升」without saying what changes. " +
+  "`executiveSummary` / `summary` / findings / rationales: a **marketer without engineering background** should follow the gist. ";
+
 /** When facts show weak sectioning, recommend more H2/H3 — evidence-led. */
 const HEADING_STRUCTURE_GUIDANCE =
   "**Headings:** if facts show too few H2/H3 vs long copy, recommend more subheadings — cite `headingCounts`/`h1`/`h2`; no invented quotes. Compare competitors only via COMPETITOR JSON. ";
@@ -66,15 +76,15 @@ function auditScopeInstruction(hasAdditionalPages: boolean): string {
 
 /** JSON shape for `seo_scan` — camelCase only in model output. */
 const SEO_SCAN_SHAPE_FREE =
-  "`seo_scan` (camelCase): `executiveSummary` (2–3 sentences, stakeholder, 商業/獲客風險 + evidence). " +
-  "`auditScope` per rule below. `overallScore` 0–100 **required** (aligns with `scores`). " +
-  "`scores`: title, meta, headings, content, technical each 0–100 (SERP title/meta, headings, depth+links, tech+schema+alts). " +
-  "`summary` 4–7 sentences — **no** duplicate opening vs `executiveSummary`; deeper evidence only. " +
+  "`seo_scan` (camelCase): `executiveSummary` (2–3 sentences, **書面語易讀**, stakeholder, 商業/獲客風險 + evidence). " +
+    "`auditScope` per rule below. `overallScore` 0–100 **required** (aligns with `scores`). " +
+    "`scores`: title, meta, headings, content, technical each 0–100 (SERP title/meta, headings, depth+links, tech+schema+alts). " +
+    "`summary` 4–7 sentences, **書面語** — **no** duplicate opening vs `executiveSummary`; deeper evidence only. " +
   "`strengths` string[] max 3. `priorityFindings` max 4 `{ priority, finding, evidence? }` P0=blockers P1=impact P2=polish; omit empty `evidence`. " +
   "`verificationChecklist` max 4. `bullets` max 6 (non-duplicative).";
 
 const SEO_SCAN_SHAPE_PAID =
-  "`seo_scan` same as free but: `strengths` ≤4, `priorityFindings` ≤8, `verificationChecklist` ≤8, `bullets` ≤10, `summary` 5–10 sentences — **no** duplicate exec opening.";
+  "`seo_scan` same as free but: `strengths` ≤4, `priorityFindings` ≤8, `verificationChecklist` ≤8, `bullets` ≤10, `summary` 5–10 sentences **書面語易讀** — **no** duplicate exec opening.";
 
 export function buildFreeScanPrompt(
   primary: SeoFacts,
@@ -98,6 +108,8 @@ export function buildFreeScanPrompt(
         SITE_SPECIFIC_IMPLEMENTATION_RULES +
         " " +
         HK_TRADITIONAL_CHINESE_ONLY +
+        " " +
+        WRITTEN_CHINESE_CLARITY +
         HEADING_STRUCTURE_GUIDANCE +
         " JSON only. **Free tier:** 3× `preview_actions` (evidence-based search/landing fixes; `title`, `rationale`, `impact?`, **steps** 3–6 objects: `text`, optional `detail`/`snippet` plain text). Site-specific only. " +
         "3× `pro_teaser_actions` (`title`, `impact`, `hook` one line) — different titles from previews; no steps/snippets.",
@@ -125,7 +137,7 @@ export function buildFreeScanPrompt(
         "\n\n" +
         auditScopeInstruction(hasBreadth) +
         "\n\n**Keys:** `seo_scan`, `preview_actions`, `pro_teaser_actions`, `competitor_analysis` (object|null). " +
-        "Every preview step maps to PRIMARY_PAGE_FACTS. **香港繁體** only.",
+        "Every preview step maps to PRIMARY_PAGE_FACTS. **香港繁體**書面語；淺白、短句；專術語首次附淺釋。",
     },
   ];
 }
@@ -152,6 +164,8 @@ export function buildPaidScanPrompt(
         SITE_SPECIFIC_IMPLEMENTATION_RULES +
         " " +
         HK_TRADITIONAL_CHINESE_ONLY +
+        " " +
+        WRITTEN_CHINESE_CLARITY +
         HEADING_STRUCTURE_GUIDANCE +
         " Respond with JSON only (no markdown).",
     },
@@ -182,7 +196,7 @@ export function buildPaidScanPrompt(
         competitorFactsBlock(competitors) +
         "\n\n" +
         auditScopeInstruction(hasBreadth) +
-        "\n\nMap actions to PRIMARY_PAGE_FACTS (or additional/competitor when used). **香港繁體** only.",
+        "\n\nMap actions to PRIMARY_PAGE_FACTS (or additional/competitor when used). **香港繁體**書面語；淺白、短句；專術語首次附淺釋。",
     },
   ];
 }

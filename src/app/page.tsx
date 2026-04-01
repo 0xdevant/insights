@@ -11,12 +11,14 @@ export default function Home() {
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-background">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(12,86,208,0.08),_transparent_55%)]" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(12,86,208,0.05),_transparent_60%)]" />
       <main
         id="main-content"
         className="relative mx-auto flex w-full max-w-7xl flex-col gap-12 px-4 pb-16 pt-10 sm:px-6 sm:pb-24 sm:pt-14"
       >
-        <ScanForm />
+        <div className="flex w-full flex-col gap-4">
+          <ScanForm />
+        </div>
 
         <footer className="border-t border-outline-variant/20 pt-10 text-sm text-secondary">
           <div className="mb-10 flex flex-wrap items-baseline gap-x-3 gap-y-2 border-b border-outline-variant/15 pb-8 text-xs">

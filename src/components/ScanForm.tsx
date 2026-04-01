@@ -2,7 +2,17 @@
 
 import { useAuth, useClerk } from "@clerk/nextjs";
 import dynamic from "next/dynamic";
-import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from "react";
+import type { TurnstileInstance } from "@marsidev/react-turnstile";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type FormEvent,
+} from "react";
+import { QuotaTrialSubtleNote } from "@/components/QuotaBanner";
 import { PreviewActionImplementationSteps } from "@/components/ScanResultBlocks";
 import { computeUnifiedScore } from "@/lib/report-score";
 import {
@@ -31,6 +41,23 @@ const UnifiedScorePanel = dynamic(
 const CompetitorSitesRow = dynamic(
   () => import("@/components/ScanResultBlocks").then((m) => ({ default: m.CompetitorSitesRow })),
   { loading: () => <div className="mt-4 h-12 animate-pulse rounded-xl bg-surface-container-high" aria-hidden /> },
+);
+/** Code-split marketing section (icons + bento) from main ScanForm bundle. */
+const ReportDepthSection = dynamic(
+  () => import("@/components/ReportDepthSection").then((m) => ({ default: m.ReportDepthSection })),
+  {
+    loading: () => (
+      <div
+        className="min-h-[28rem] w-full animate-pulse rounded-2xl bg-surface-container-low/35"
+        aria-hidden
+      />
+    ),
+  },
+);
+
+const Turnstile = dynamic(
+  () => import("@marsidev/react-turnstile").then((m) => m.Turnstile),
+  { ssr: false },
 );
 const PriorityFindingsPreview = dynamic(
   () =>
@@ -93,22 +120,6 @@ function SocialSupportStrip() {
     </div>
   );
 }
-
-const Turnstile = dynamic(
-  () => import("@marsidev/react-turnstile").then((m) => m.Turnstile),
-  {
-    ssr: false,
-    loading: () => (
-      <div
-        className="flex min-h-[65px] w-fit max-w-full items-center rounded-md border border-outline-variant/20 bg-surface-container-low px-3 text-xs text-foreground-muted"
-        role="status"
-        aria-live="polite"
-      >
-        載入緊人機驗證…
-      </div>
-    ),
-  },
-);
 
 type ScanResponse = {
   error?: string;
@@ -272,6 +283,9 @@ export function ScanForm() {
   );
   const [error, setError] = useState<string | null>(null);
   const [turnstileError, setTurnstileError] = useState<string | null>(null);
+  const turnstileRef = useRef<TurnstileInstance | null>(null);
+  /** After user clicks submit, run scan once Turnstile returns a token (execute-on-demand). */
+  const pendingSubmitAfterTurnstileRef = useRef(false);
 
   const refreshMe = useCallback(() => {
     const qs =
@@ -341,78 +355,117 @@ export function ScanForm() {
     if (!url.trim()) return false;
     if (!isLoaded) return false;
     if (!isSignedIn) return true;
-    if (needsTurnstile && !turnstileToken) return false;
     if (experienceBlocked) return false;
     return true;
-  }, [
-    isLoaded,
-    isSignedIn,
-    needsTurnstile,
-    experienceBlocked,
-    turnstileToken,
-    url,
-  ]);
+  }, [isLoaded, isSignedIn, experienceBlocked, url]);
 
-  const runScan = useCallback(async () => {
-    setError(null);
-    if (!isLoaded) return;
-    if (!isSignedIn) {
+  const runScan = useCallback(
+    async (opts?: { turnstileTokenOverride?: string | null }) => {
+      setError(null);
+      if (!isLoaded) return;
+      if (!isSignedIn) {
+        if (!url.trim()) {
+          setError("請先輸入要分析嘅網址。");
+          return;
+        }
+        openSignIn({});
+        return;
+      }
+
+      const effectiveTurnstileToken = opts?.turnstileTokenOverride ?? turnstileToken;
+      if (needsTurnstile && !effectiveTurnstileToken) {
+        setError("需要人機驗證。");
+        return;
+      }
+
+      setResult(null);
+      setLoading(true);
+      try {
+        const body: { url: string; turnstileToken?: string; deviceId?: string } = {
+          url: withHttpsScheme(url),
+        };
+        if (needsTurnstile && effectiveTurnstileToken) body.turnstileToken = effectiveTurnstileToken;
+        if (deviceId) body.deviceId = deviceId;
+
+        const res = await fetch("/api/scan", {
+          method: "POST",
+          credentials: "include",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        const data = (await res.json()) as ScanResponse & { upgrade?: boolean };
+        if (!res.ok) {
+          if (res.status === 401 && data.signInRequired) {
+            setError(data.error ?? "請先登入或註冊會員。");
+            return;
+          }
+          if (res.status === 429 && data.upgrade) {
+            setError(null);
+            setResult({ ...data, paid: false });
+            void refreshMe();
+            return;
+          }
+          setError(data.error ?? `請求失敗（${res.status}）`);
+          return;
+        }
+        setResult(data);
+        if (userId) {
+          persistLastScanSession(userId, withHttpsScheme(url), data);
+        }
+        if (typeof data.paid === "boolean") setPaid(data.paid);
+        if (data.paid === false && typeof data.freeGlobalRemaining === "number") {
+          setFreeGlobalRemaining(data.freeGlobalRemaining);
+        }
+        if (typeof data.freeGlobalLimit === "number") {
+          setFreeGlobalLimit(data.freeGlobalLimit);
+        }
+        if (needsTurnstile) {
+          setTurnstileToken(null);
+          turnstileRef.current?.reset();
+        }
+        void refreshMe();
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "網絡錯誤");
+      } finally {
+        setLoading(false);
+      }
+    },
+    [deviceId, isLoaded, isSignedIn, needsTurnstile, openSignIn, refreshMe, turnstileToken, url, userId],
+  );
+
+  const handleFormSubmit = useCallback(
+    (e: FormEvent) => {
+      e.preventDefault();
+      if (loading) return;
       if (!url.trim()) {
         setError("請先輸入要分析嘅網址。");
         return;
       }
-      openSignIn({});
-      return;
-    }
-
-    setResult(null);
-    setLoading(true);
-    try {
-      const body: { url: string; turnstileToken?: string; deviceId?: string } = {
-        url: withHttpsScheme(url),
-      };
-      if (needsTurnstile && turnstileToken) body.turnstileToken = turnstileToken;
-      if (deviceId) body.deviceId = deviceId;
-
-      const res = await fetch("/api/scan", {
-        method: "POST",
-        credentials: "include",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      const data = (await res.json()) as ScanResponse & { upgrade?: boolean };
-      if (!res.ok) {
-        if (res.status === 401 && data.signInRequired) {
-          setError(data.error ?? "請先登入或註冊會員。");
-          return;
-        }
-        if (res.status === 429 && data.upgrade) {
-          setError(null);
-          setResult({ ...data, paid: false });
-          void refreshMe();
-          return;
-        }
-        setError(data.error ?? `請求失敗（${res.status}）`);
+      if (!isLoaded) return;
+      if (!isSignedIn) {
+        openSignIn({});
         return;
       }
-      setResult(data);
-      if (userId) {
-        persistLastScanSession(userId, withHttpsScheme(url), data);
+      if (experienceBlocked) return;
+      if (needsTurnstile && !turnstileToken) {
+        pendingSubmitAfterTurnstileRef.current = true;
+        turnstileRef.current?.execute();
+        return;
       }
-      if (typeof data.paid === "boolean") setPaid(data.paid);
-      if (data.paid === false && typeof data.freeGlobalRemaining === "number") {
-        setFreeGlobalRemaining(data.freeGlobalRemaining);
-      }
-      if (typeof data.freeGlobalLimit === "number") {
-        setFreeGlobalLimit(data.freeGlobalLimit);
-      }
-      void refreshMe();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "網絡錯誤");
-    } finally {
-      setLoading(false);
-    }
-  }, [deviceId, isLoaded, isSignedIn, needsTurnstile, openSignIn, refreshMe, turnstileToken, url, userId]);
+      void runScan();
+    },
+    [
+      loading,
+      url,
+      isLoaded,
+      isSignedIn,
+      experienceBlocked,
+      needsTurnstile,
+      turnstileToken,
+      openSignIn,
+      runScan,
+    ],
+  );
 
   const hasSuccessResult = Boolean(result && !result.error && !result.upgrade);
   const showInputForm = !hasSuccessResult && !loading;
@@ -424,172 +477,158 @@ export function ScanForm() {
     setResult(null);
     setError(null);
     setTurnstileToken(null);
+    pendingSubmitAfterTurnstileRef.current = false;
+    turnstileRef.current?.reset();
   }, [userId]);
 
   return (
     <div className="flex flex-col gap-10">
       {showMarketingHero ? (
-        <header className="space-y-3">
-          <h1 className="font-headline text-balance text-4xl font-semibold tracking-tight text-on-surface sm:text-5xl">
-            拎一份專業營銷報告
-          </h1>
-          <ul className="list-none space-y-2 pl-0 text-pretty text-lg leading-relaxed text-foreground-muted">
-            <li>
-              <span aria-hidden>🔍 </span>
-              <strong className="font-medium text-on-surface">SEO 分析</strong>
-            </li>
-            <li>
-              <span aria-hidden>📊 </span>
-              <strong className="font-medium text-on-surface">
-                市場＋競爭對手分析
-              </strong>
-            </li>
-            <li>
-              <span aria-hidden>🛠️ </span>
-              仲會直接俾你「
-              <strong className="font-medium text-on-surface">可以落手做</strong>
-              」嘅技術建議
-            </li>
-          </ul>
-          <div
-            className="inline-flex max-w-full flex-wrap items-center gap-x-2 gap-y-1 rounded-lg border border-primary/20 bg-secondary-container/70 px-3 py-2 text-xs leading-snug text-on-surface"
-            role="note"
-          >
-            <span className="shrink-0 font-medium text-primary">額度</span>
-            <span className="text-on-surface">
-              每次分析都會出
-              <strong className="font-medium text-primary">
-                完整行動清單
-              </strong>
-              同
-              <strong className="font-medium text-primary">
-                優先建議
-              </strong>
-              。
-              <strong className="font-medium text-primary">
-                體驗額度
-              </strong>
-              ：每個帳戶、瀏覽器檔案同 IP 各限做 1 次體驗（換 VPN 唔會繞過帳戶）；全站每日總名額有限（先到先得）。
-            </span>
+        <>
+        <section
+          className="rounded-[1.75rem] bg-secondary-container px-5 py-10 shadow-ambient sm:px-10 sm:py-12"
+          aria-labelledby="hero-heading"
+        >
+          <div className="mx-auto max-w-3xl text-center">
+            <header className="space-y-4">
+              <h1
+                id="hero-heading"
+                className="font-headline text-balance text-3xl font-bold tracking-tight text-on-surface sm:text-4xl md:text-5xl"
+              >
+                拎一份專業營銷報告
+              </h1>
+              <p className="mx-auto max-w-xl text-pretty text-base leading-relaxed text-foreground-muted sm:text-lg">
+                SEO、市場、競爭對手同 AI 分析，加上可以落手做嘅技術建議。
+              </p>
+            </header>
+
+            {!isLoaded ? (
+              <div className="mx-auto mt-8 max-w-2xl">
+                <div className="h-[52px] animate-pulse rounded-full bg-surface-container-high" aria-hidden />
+                <p className="sr-only">載入帳戶狀態…</p>
+              </div>
+            ) : (
+              <form
+                className="mx-auto mt-8 flex max-w-2xl flex-col gap-4 text-center"
+                onSubmit={handleFormSubmit}
+              >
+                <label className="sr-only" htmlFor="url">
+                  要分析嘅頁面網址
+                </label>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-stretch sm:justify-center">
+                  <input
+                    id="url"
+                    name="url"
+                    type="text"
+                    inputMode="url"
+                    autoComplete="url"
+                    spellCheck={false}
+                    placeholder="輸入網址，例如 example.com"
+                    value={url}
+                    onChange={(e) => setUrl(e.target.value)}
+                    aria-describedby={!isSignedIn ? "auth-before-scan" : undefined}
+                    className="min-h-[52px] w-full min-w-0 flex-1 rounded-full border border-primary/20 bg-surface-container-lowest px-6 py-3.5 text-center text-base text-on-surface shadow-sm outline-none ring-0 placeholder:text-foreground-subtle focus:border-primary/35 focus:ring-2 focus:ring-primary/15 sm:text-left"
+                  />
+                  <button
+                    type="submit"
+                    disabled={!canSubmit || loading}
+                    className="insights-focus-ring min-h-[52px] shrink-0 rounded-full bg-gradient-to-b from-primary to-primary-container px-8 py-3.5 text-sm font-semibold text-on-primary shadow-sm transition hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    開始分析
+                  </button>
+                </div>
+                {!isSignedIn ? (
+                  <p id="auth-before-scan" className="text-xs text-foreground-muted">
+                    撳「開始分析」會請你先<strong className="text-on-surface">登入或註冊</strong>
+                    ；登入後會用同一個網址繼續。
+                  </p>
+                ) : null}
+                {needsTurnstile && !isSignedIn ? (
+                  <p className="text-xs text-foreground-muted">
+                    免費掃描受 Cloudflare Turnstile 保護：請先<strong className="text-on-surface">登入</strong>
+                    ，登入後撳「開始分析」會先做人機驗證（如需要）。
+                  </p>
+                ) : null}
+                {needsTurnstile && isSignedIn ? (
+                  <div className="space-y-2 pt-2">
+                    {turnstileError ? (
+                      <p className="text-xs text-red-600/95" role="alert">
+                        {turnstileError}
+                      </p>
+                    ) : null}
+                    <div className="mx-auto min-h-0 w-fit max-w-full [&_iframe]:rounded-md">
+                      <Turnstile
+                        ref={turnstileRef}
+                        siteKey={turnstileSiteKey as string}
+                        options={{
+                          theme: "light",
+                          appearance: "execute",
+                          execution: "execute",
+                        }}
+                        onSuccess={(token) => {
+                          setTurnstileError(null);
+                          setTurnstileToken(token);
+                          if (pendingSubmitAfterTurnstileRef.current) {
+                            pendingSubmitAfterTurnstileRef.current = false;
+                            void runScan({ turnstileTokenOverride: token });
+                          }
+                        }}
+                        onExpire={() => {
+                          setTurnstileToken(null);
+                          pendingSubmitAfterTurnstileRef.current = false;
+                        }}
+                        onError={() => {
+                          pendingSubmitAfterTurnstileRef.current = false;
+                          setTurnstileError(
+                            "驗證載入唔到。試重新整理頁面，或者暫停擋廣告／私隱外掛，同埋允許 challenges.cloudflare.com。",
+                          );
+                        }}
+                      />
+                    </div>
+                  </div>
+                ) : null}
+                {isSignedIn &&
+                (paid === true ||
+                  (!quotaBypass &&
+                    (userAlreadyUsedFree || deviceAlreadyUsedFree || ipAlreadyUsedFree)) ||
+                  (!quotaBypass && freeGlobalRemaining !== null && freeGlobalLimit !== null)) ? (
+                  <div className="space-y-3 rounded-xl border border-outline-variant/15 bg-surface-container-lowest px-3 py-3 text-left text-xs text-foreground-muted shadow-sm">
+                    {paid === true ? (
+                      <p className="text-foreground-subtle">你嘅帳戶唔受體驗額度限制。</p>
+                    ) : !quotaBypass && userAlreadyUsedFree ? (
+                      <p className="text-primary">
+                        此帳戶已用過體驗額度。聯絡我哋或留意訂閱方案。
+                      </p>
+                    ) : !quotaBypass && deviceAlreadyUsedFree ? (
+                      <p className="text-primary">
+                        呢部瀏覽器／裝置已用過體驗額度。清除本站資料或換另一個瀏覽器檔案仍可能受其他限制。
+                      </p>
+                    ) : !quotaBypass && ipAlreadyUsedFree ? (
+                      <p className="text-primary">
+                        呢個 IP 已用過體驗額度。聽日再試、換網絡，或聯絡我哋。
+                      </p>
+                    ) : !quotaBypass && freeGlobalRemaining !== null && freeGlobalLimit !== null ? (
+                      <div className="border-l-2 border-primary/35 pl-3">
+                        <p className="font-medium text-primary">額度說明</p>
+                        <p className="mt-1 text-foreground-subtle">
+                          每個帳戶一次體驗；全站今日尚餘{" "}
+                          <span className="font-semibold tabular-nums text-primary">{freeGlobalRemaining}</span>
+                          ／{freeGlobalLimit} 個名額（先到先得）。
+                        </p>
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
+              </form>
+            )}
           </div>
-        </header>
+        </section>
+        <QuotaTrialSubtleNote />
+        <ReportDepthSection />
+        </>
       ) : null}
 
-      {showInputForm && !isLoaded ? (
-        <section className="rounded-2xl border border-outline-variant/20 bg-surface-container-low p-6">
-          <div className="h-36 animate-pulse rounded-xl bg-surface-container-high" aria-hidden />
-          <p className="sr-only">載入帳戶狀態…</p>
-        </section>
-      ) : showInputForm && isLoaded ? (
-        <section className="rounded-2xl border border-outline-variant/20 bg-surface-container-low p-6">
-          <form
-            className="flex flex-col gap-4"
-            onSubmit={(e) => {
-              e.preventDefault();
-              if (canSubmit && !loading) void runScan();
-            }}
-          >
-            <label className="text-sm text-foreground-muted" htmlFor="url">
-              要分析嘅頁面網址
-            </label>
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-              <input
-                id="url"
-                name="url"
-                type="text"
-                inputMode="url"
-                autoComplete="url"
-                spellCheck={false}
-                placeholder="example.com"
-                value={url}
-                onChange={(e) => setUrl(e.target.value)}
-                aria-describedby={
-                  !isSignedIn
-                    ? "auth-before-scan"
-                    : needsTurnstile
-                      ? "turnstile-hint"
-                      : undefined
-                }
-                className="w-full rounded-xl border border-outline-variant/20 bg-surface-container-lowest px-4 py-3 text-sm text-on-surface outline-none ring-primary/20 placeholder:text-foreground-subtle focus:border-primary/40 focus:ring-2 focus:ring-primary/15"
-              />
-              <button
-                type="submit"
-                disabled={!canSubmit || loading}
-                className="insights-focus-ring shrink-0 rounded-xl bg-gradient-to-b from-primary to-primary-container px-5 py-3 text-sm font-semibold text-on-primary shadow-sm transition hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                開始分析
-              </button>
-            </div>
-            {!isSignedIn ? (
-              <p id="auth-before-scan" className="text-xs text-foreground-muted">
-                撳「開始分析」會請你先<strong className="text-on-surface">登入或註冊</strong>；登入後會用同一個網址繼續。
-              </p>
-            ) : null}
-            {needsTurnstile && isSignedIn ? (
-              <div className="space-y-2 pt-2">
-                <p id="turnstile-hint" className="text-xs text-foreground-muted">
-                  先完成下面驗證，再撳「開始分析」。
-                </p>
-              {turnstileError ? (
-                <p className="text-xs text-red-300/95" role="alert">
-                  {turnstileError}
-                </p>
-              ) : null}
-              <div className="min-h-[65px] w-fit max-w-full [&_iframe]:rounded-md">
-                <Turnstile
-                  siteKey={turnstileSiteKey as string}
-                  onSuccess={(token) => {
-                    setTurnstileError(null);
-                    setTurnstileToken(token);
-                  }}
-                  onExpire={() => setTurnstileToken(null)}
-                  onError={() =>
-                    setTurnstileError(
-                      "驗證載入唔到。試重新整理頁面，或者暫停擋廣告／私隱外掛，同埋允許 challenges.cloudflare.com。",
-                    )
-                  }
-                />
-              </div>
-              </div>
-            ) : null}
-            {isSignedIn &&
-            (paid === true ||
-              (!quotaBypass &&
-                (userAlreadyUsedFree || deviceAlreadyUsedFree || ipAlreadyUsedFree)) ||
-              (!quotaBypass && freeGlobalRemaining !== null && freeGlobalLimit !== null) ||
-              (paid === false && quotaBypass)) ? (
-              <div className="space-y-3 rounded-xl border border-outline-variant/15 bg-surface-container-lowest px-3 py-3 text-xs text-foreground-muted">
-                {paid === true ? (
-                  <p className="text-foreground-subtle">你嘅帳戶唔受體驗額度限制。</p>
-                ) : !quotaBypass && userAlreadyUsedFree ? (
-                  <p className="text-primary">
-                    此帳戶已用過體驗額度。換 VPN 亦唔會再開名額；聯絡我哋或留意訂閱方案。
-                  </p>
-                ) : !quotaBypass && deviceAlreadyUsedFree ? (
-                  <p className="text-primary">
-                    呢部瀏覽器／裝置已用過體驗額度。清除本站資料或換另一個瀏覽器檔案仍可能受其他限制。
-                  </p>
-                ) : !quotaBypass && ipAlreadyUsedFree ? (
-                  <p className="text-primary">
-                    呢個 IP 已用過體驗額度。聽日再試、換網絡，或聯絡我哋。
-                  </p>
-                ) : !quotaBypass && freeGlobalRemaining !== null && freeGlobalLimit !== null ? (
-                  <div className="border-l-2 border-primary/35 pl-3">
-                    <p className="font-medium text-primary">額度說明</p>
-                    <p className="mt-1 text-foreground-subtle">
-                      每個帳戶、此瀏覽器設定同每個 IP 各限做一次體驗分析（VPN 唔會繞過帳戶限制）。全站今日尚餘{" "}
-                      <span className="font-semibold tabular-nums text-primary">{freeGlobalRemaining}</span>
-                      ／{freeGlobalLimit} 個名額（先到先得）。
-                    </p>
-                  </div>
-                ) : paid === false && quotaBypass ? (
-                  <p className="text-foreground-subtle">你正使用配額豁免測試。</p>
-                ) : null}
-              </div>
-            ) : null}
-          </form>
-        </section>
-      ) : loading ? (
+      {loading ? (
         <section
           className="rounded-2xl border border-outline-variant/20 bg-surface-container-low p-8 text-center sm:p-10"
           role="status"
@@ -648,7 +687,7 @@ export function ScanForm() {
         >
           <p>
             {result.userFreeExhausted
-              ? "此帳戶已用過體驗額度。換 VPN 亦唔會再開名額；聯絡我哋或留意訂閱方案。"
+              ? "此帳戶已用過體驗額度。聯絡我哋或留意訂閱方案。"
               : result.deviceFreeExhausted
                 ? "呢部瀏覽器／裝置已用過體驗額度。聯絡我哋。"
                 : result.ipFreeExhausted

@@ -20,7 +20,7 @@ export default {
         "on-surface": "var(--on-surface)",
         "on-surface-variant": "var(--on-surface-variant)",
         secondary: "var(--secondary)",
-        primary: "var(--primary)",
+        primary: "rgb(var(--primary-rgb) / <alpha-value>)",
         "primary-container": "var(--primary-container)",
         "on-primary": "var(--on-primary)",
         "secondary-container": "var(--secondary-container)",

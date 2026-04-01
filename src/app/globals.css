@@ -13,6 +13,8 @@
   --on-surface-variant: #434654;
   --secondary: #525f71;
   --primary: #003d9b;
+  /* Space-separated RGB so Tailwind primary/opacity utilities work. */
+  --primary-rgb: 0 61 155;
   --primary-container: #0052cc;
   --on-primary: #ffffff;
   --secondary-container: #d3e1f6;
@@ -74,6 +76,7 @@ body {
   font-family: var(--font-jetbrains), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
     "Courier New", monospace;
 }
+
 
 .insights-focus-ring:focus-visible {
   outline: 2px solid var(--ring-focus);
