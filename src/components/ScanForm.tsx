@@ -636,128 +636,114 @@ export function ScanForm() {
                     className="mx-auto mt-8 flex max-w-2xl flex-col gap-4 text-center"
                     onSubmit={handleFormSubmit}
                   >
-                  <label className="sr-only" htmlFor="url">
-                    要分析嘅頁面網址
-                  </label>
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-stretch sm:justify-center">
-                    <input
-                      id="url"
-                      name="url"
-                      type="text"
-                      inputMode="url"
-                      autoComplete="url"
-                      spellCheck={false}
-                      placeholder="輸入網址，例如 example.com"
-                      value={url}
-                      onChange={(e) => setUrl(e.target.value)}
-                      aria-describedby={
-                        !isSignedIn ? "auth-before-scan" : undefined
-                      }
-                      className="min-h-[52px] w-full min-w-0 flex-1 rounded-full border border-primary/20 bg-surface-container-lowest px-6 py-3.5 text-center text-base text-on-surface shadow-sm outline-none ring-0 placeholder:text-foreground-subtle focus:border-primary/35 focus:ring-2 focus:ring-primary/15 sm:text-left"
-                    />
-                    <button
-                      type="submit"
-                      disabled={!canSubmit || loading}
-                      className="insights-focus-ring min-h-[52px] shrink-0 rounded-full bg-gradient-to-b from-primary to-primary-container px-8 py-3.5 text-sm font-semibold text-on-primary shadow-sm transition hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-40"
-                    >
-                      開始分析
-                    </button>
-                  </div>
-                  {!isSignedIn ? (
-                    <p
-                      id="auth-before-scan"
-                      className="text-xs text-foreground-muted"
-                    >
-                      撳「開始分析」會請你先
-                      <strong className="text-on-surface">登入或註冊</strong>
-                      ；登入後會用同一個網址繼續。
-                    </p>
-                  ) : null}
-                  {needsTurnstile && isSignedIn ? (
-                    <div className="space-y-2 pt-2">
-                      {turnstileError ? (
-                        <p className="text-xs text-red-600/95" role="alert">
-                          {turnstileError}
-                        </p>
-                      ) : null}
-                      <div className="mx-auto min-h-0 w-fit max-w-full [&_iframe]:rounded-md">
-                        <Turnstile
-                          ref={turnstileRef}
-                          siteKey={turnstileSiteKey as string}
-                          options={{
-                            theme: "light",
-                            appearance: "execute",
-                            execution: "execute",
-                          }}
-                          onSuccess={(token) => {
-                            setTurnstileError(null);
-                            setTurnstileToken(token);
-                            if (pendingSubmitAfterTurnstileRef.current) {
-                              pendingSubmitAfterTurnstileRef.current = false;
-                              void runScan({ turnstileTokenOverride: token });
-                            }
-                          }}
-                          onExpire={() => {
-                            setTurnstileToken(null);
-                            pendingSubmitAfterTurnstileRef.current = false;
-                          }}
-                          onError={() => {
-                            pendingSubmitAfterTurnstileRef.current = false;
-                            setTurnstileError(
-                              "驗證載入唔到。試重新整理頁面，或者暫停擋廣告／私隱外掛，同埋允許 challenges.cloudflare.com。",
-                            );
-                          }}
-                        />
-                      </div>
+                    <label className="sr-only" htmlFor="url">
+                      要分析嘅頁面網址
+                    </label>
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-stretch sm:justify-center">
+                      <input
+                        id="url"
+                        name="url"
+                        type="text"
+                        inputMode="url"
+                        autoComplete="url"
+                        spellCheck={false}
+                        placeholder="輸入網址，例如 example.com"
+                        value={url}
+                        onChange={(e) => setUrl(e.target.value)}
+                        className="min-h-[52px] w-full min-w-0 flex-1 rounded-full border border-primary/20 bg-surface-container-lowest px-6 py-3.5 text-center text-base text-on-surface shadow-sm outline-none ring-0 placeholder:text-foreground-subtle focus:border-primary/35 focus:ring-2 focus:ring-primary/15 sm:text-left"
+                      />
+                      <button
+                        type="submit"
+                        disabled={!canSubmit || loading}
+                        className="insights-focus-ring min-h-[52px] shrink-0 rounded-full bg-gradient-to-b from-primary to-primary-container px-8 py-3.5 text-sm font-semibold text-on-primary shadow-sm transition hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        開始分析
+                      </button>
                     </div>
-                  ) : null}
-                  {showQuotaInfobox ? (
-                    <div className="space-y-3 rounded-xl border border-outline-variant/15 bg-surface-container-lowest px-3 py-3 text-left text-xs text-foreground-muted shadow-sm">
-                      {isSignedIn &&
-                      !quotaBypass &&
-                      userAlreadyUsedFree ? (
-                        <p className="text-primary">
-                          此帳戶已用過體驗額度。聯絡我哋。
-                        </p>
-                      ) : null}
-                      {isSignedIn &&
-                      !quotaBypass &&
-                      !userAlreadyUsedFree &&
-                      deviceAlreadyUsedFree ? (
-                        <p className="text-primary">
-                          呢部瀏覽器／裝置已用過體驗額度。清除本站資料或換另一個瀏覽器檔案仍可能受其他限制。
-                        </p>
-                      ) : null}
-                      {isSignedIn &&
-                      !quotaBypass &&
-                      !userAlreadyUsedFree &&
-                      !deviceAlreadyUsedFree &&
-                      ipAlreadyUsedFree ? (
-                        <p className="text-primary">
-                          呢個 IP 已用過體驗額度。聽日再試、換網絡，或聯絡我哋。
-                        </p>
-                      ) : null}
-                      {hasGlobalQuota ? (
-                        <div className="border-l-2 border-primary/35 pl-3">
-                          <p className="font-medium text-primary">額度說明</p>
-                          <p className="mt-1 text-foreground-subtle">
-                            每個帳戶一次體驗；全站今日尚餘{" "}
-                            <span className="font-semibold tabular-nums text-primary">
-                              {freeGlobalRemaining}
-                            </span>
-                            ／{freeGlobalLimit} 個名額（先到先得）。
+                    {needsTurnstile && isSignedIn ? (
+                      <div className="space-y-2 pt-2">
+                        {turnstileError ? (
+                          <p className="text-xs text-red-600/95" role="alert">
+                            {turnstileError}
                           </p>
-                          {quotaBypass ? (
-                            <p className="mt-2 text-[10px] leading-snug text-on-surface-variant">
-                              {isDev
-                                ? "開發模式：本機已略過額度限制，仍可照常分析。"
-                                : "你的連線已略過體驗額度限制；以上為全站今日名額參考。"}
-                            </p>
-                          ) : null}
+                        ) : null}
+                        <div className="mx-auto min-h-0 w-fit max-w-full [&_iframe]:rounded-md">
+                          <Turnstile
+                            ref={turnstileRef}
+                            siteKey={turnstileSiteKey as string}
+                            options={{
+                              theme: "light",
+                              appearance: "execute",
+                              execution: "execute",
+                            }}
+                            onSuccess={(token) => {
+                              setTurnstileError(null);
+                              setTurnstileToken(token);
+                              if (pendingSubmitAfterTurnstileRef.current) {
+                                pendingSubmitAfterTurnstileRef.current = false;
+                                void runScan({ turnstileTokenOverride: token });
+                              }
+                            }}
+                            onExpire={() => {
+                              setTurnstileToken(null);
+                              pendingSubmitAfterTurnstileRef.current = false;
+                            }}
+                            onError={() => {
+                              pendingSubmitAfterTurnstileRef.current = false;
+                              setTurnstileError(
+                                "驗證載入唔到。試重新整理頁面，或者暫停擋廣告／私隱外掛，同埋允許 challenges.cloudflare.com。",
+                              );
+                            }}
+                          />
                         </div>
-                      ) : null}
-                    </div>
-                  ) : null}
+                      </div>
+                    ) : null}
+                    {showQuotaInfobox ? (
+                      <div className="mt-8 space-y-3 rounded-xl border border-outline-variant/15 bg-surface-container-lowest px-3 py-3 text-left text-xs text-foreground-muted shadow-sm">
+                        {isSignedIn && !quotaBypass && userAlreadyUsedFree ? (
+                          <p className="text-primary">
+                            此帳戶已用過體驗額度。聯絡我哋。
+                          </p>
+                        ) : null}
+                        {isSignedIn &&
+                        !quotaBypass &&
+                        !userAlreadyUsedFree &&
+                        deviceAlreadyUsedFree ? (
+                          <p className="text-primary">
+                            呢部瀏覽器／裝置已用過體驗額度。清除本站資料或換另一個瀏覽器檔案仍可能受其他限制。
+                          </p>
+                        ) : null}
+                        {isSignedIn &&
+                        !quotaBypass &&
+                        !userAlreadyUsedFree &&
+                        !deviceAlreadyUsedFree &&
+                        ipAlreadyUsedFree ? (
+                          <p className="text-primary">
+                            呢個 IP
+                            已用過體驗額度。聽日再試、換網絡，或聯絡我哋。
+                          </p>
+                        ) : null}
+                        {hasGlobalQuota ? (
+                          <div className="border-l-2 border-primary/35 pl-3">
+                            <p className="font-medium text-primary">額度說明</p>
+                            <p className="mt-1 text-foreground-subtle">
+                              每個帳戶一次體驗；全站今日尚餘{" "}
+                              <span className="font-semibold tabular-nums text-primary">
+                                {freeGlobalRemaining}
+                              </span>
+                              ／{freeGlobalLimit} 個名額（先到先得）。
+                            </p>
+                            {quotaBypass ? (
+                              <p className="mt-2 text-[10px] leading-snug text-on-surface-variant">
+                                {isDev
+                                  ? "開發模式：本機已略過額度限制，仍可照常分析。"
+                                  : "你的連線已略過體驗額度限制；以上為全站今日名額參考。"}
+                              </p>
+                            ) : null}
+                          </div>
+                        ) : null}
+                      </div>
+                    ) : null}
                   </form>
                   {homeFocusMode && hasSuccessResult ? (
                     <div className="mx-auto mt-6 flex max-w-2xl justify-center">
@@ -784,9 +770,7 @@ export function ScanForm() {
               )}
             </div>
           </section>
-          {!hasSuccessResult || homeFocusMode ? (
-            <ReportDepthSection />
-          ) : null}
+          {!hasSuccessResult || homeFocusMode ? <ReportDepthSection /> : null}
         </>
       ) : null}
 
@@ -910,7 +894,8 @@ export function ScanForm() {
             className="border-t border-outline-variant/10 pt-3 text-[11px] leading-snug text-on-surface-variant sm:text-xs"
             role="note"
           >
-            報告只暫存於此瀏覽器；換裝置或清資料可能會無咗。需要長期保留可撳上面「匯出 Markdown」下載 .md。
+            報告只暫存於此瀏覽器；換裝置或清資料可能會無咗。需要長期保留可撳上面「匯出
+            Markdown」下載 .md。
           </p>
 
           <nav
