@@ -681,13 +681,6 @@ export function ScanForm() {
                       ；登入後會用同一個網址繼續。
                     </p>
                   ) : null}
-                  {needsTurnstile && !isSignedIn ? (
-                    <p className="text-xs text-foreground-muted">
-                      免費掃描受 Cloudflare Turnstile 保護：請先
-                      <strong className="text-on-surface">登入</strong>
-                      ，登入後撳「開始分析」會先做人機驗證（如需要）。
-                    </p>
-                  ) : null}
                   {needsTurnstile && isSignedIn ? (
                     <div className="space-y-2 pt-2">
                       {turnstileError ? (
