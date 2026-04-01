@@ -21,14 +21,14 @@ const SCORE_DIMS: { key: string; label: string }[] = [
 
 function priorityBadgeClass(p: string): string {
   const u = p.toUpperCase();
-  if (u === "P0") return "bg-red-500/20 text-red-100 ring-1 ring-red-400/35";
-  if (u === "P1") return "bg-amber-400/18 text-amber-100 ring-1 ring-amber-400/30";
-  return "bg-white/[0.08] text-foreground-muted ring-1 ring-white/10";
+  if (u === "P0") return "bg-red-500/20 text-error ring-1 ring-red-400/35";
+  if (u === "P1") return "bg-secondary-container/80 text-primary ring-1 ring-primary/25";
+  return "bg-surface-container-high text-secondary ring-1 ring-outline-variant/25";
 }
 
 function PanelFallback({ children }: { children: ReactNode }) {
   return (
-    <p className="rounded-lg border border-white/10 bg-black/30 px-3 py-3 text-sm leading-relaxed text-foreground-muted">
+    <p className="rounded-lg border border-outline-variant/20 bg-surface-container-low px-3 py-3 text-sm leading-relaxed text-foreground-muted">
       {children}
     </p>
   );
@@ -40,12 +40,12 @@ export function PriorityFindingsPreview({ data }: { data: unknown }) {
   if (!norm || norm.priorityFindings.length === 0) return null;
   return (
     <div className="mt-4">
-      <p className="text-xs font-medium tracking-wide text-white/50">優先次序（最緊要先）</p>
+      <p className="text-xs font-medium tracking-wide text-on-surface/50">優先次序（最緊要先）</p>
       <ul className="mt-3 space-y-3">
         {norm.priorityFindings.map((pf, i) => (
           <li
             key={i}
-            className="rounded-lg border border-white/[0.07] bg-black/30 px-3 py-2.5"
+            className="rounded-lg border border-outline-variant/15 bg-surface-container-low px-3 py-2.5"
           >
             <div className="flex flex-wrap items-center gap-2">
               <span
@@ -54,10 +54,10 @@ export function PriorityFindingsPreview({ data }: { data: unknown }) {
                 {pf.priority.toUpperCase()}
               </span>
             </div>
-            <p className="mt-2 text-sm text-white/90">{pf.finding}</p>
+            <p className="mt-2 text-sm text-on-surface">{pf.finding}</p>
             {pf.evidence ? (
               <p className="mt-1.5 text-xs leading-relaxed text-foreground-subtle">
-                <span className="text-white/40">依據：</span>
+                <span className="text-on-surface/40">依據：</span>
                 {pf.evidence}
               </p>
             ) : null}
@@ -98,7 +98,7 @@ export function SeoScanPanel({
     <div className="space-y-6">
       {!hideOverallScore && overall !== null ? (
         <div className="flex flex-wrap items-baseline gap-2">
-          <span className="text-3xl font-semibold tabular-nums text-amber-200">{Math.round(overall)}</span>
+          <span className="text-3xl font-semibold tabular-nums text-primary">{Math.round(overall)}</span>
           <span className="text-sm text-foreground-muted">
             ／100 · 報告總分
           </span>
@@ -112,14 +112,14 @@ export function SeoScanPanel({
             if (typeof v !== "number") return null;
             const pct = Math.max(0, Math.min(100, Math.round(v)));
             return (
-              <li key={key} className="rounded-lg border border-white/[0.06] bg-black/25 px-3 py-2">
+              <li key={key} className="rounded-lg border border-outline-variant/12 bg-surface-container-lowest px-3 py-2">
                 <div className="flex items-center justify-between gap-2 text-xs">
                   <span className="text-foreground-muted">{label}</span>
-                  <span className="font-mono tabular-nums text-white/85">{pct}</span>
+                  <span className="font-mono tabular-nums text-on-surface">{pct}</span>
                 </div>
-                <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/10">
+                <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-surface-container-high">
                   <div
-                    className="h-full rounded-full bg-amber-400/80"
+                    className="h-full rounded-full bg-primary/80"
                     style={{ width: `${pct}%` }}
                   />
                 </div>
@@ -131,9 +131,9 @@ export function SeoScanPanel({
 
       {hasDetailSection ? (
         <div>
-          <p className="text-xs font-medium uppercase tracking-wider text-white/50">詳細分析</p>
+          <p className="text-xs font-medium uppercase tracking-wider text-on-surface/50">詳細分析</p>
           {detailLead ? (
-            <p className="mt-2 text-base font-medium leading-relaxed text-white/95">{detailLead}</p>
+            <p className="mt-2 text-base font-medium leading-relaxed text-on-surface/95">{detailLead}</p>
           ) : null}
           {detailRest ? (
             <p className="mt-2 text-sm leading-relaxed text-foreground-muted">{detailRest}</p>
@@ -143,8 +143,8 @@ export function SeoScanPanel({
 
       {norm.strengths.length > 0 ? (
         <div>
-          <p className="text-xs font-medium uppercase tracking-wider text-emerald-200/75">已做得唔錯</p>
-          <ul className="mt-2 list-disc space-y-1.5 pl-5 text-sm leading-relaxed text-emerald-100/85">
+          <p className="text-xs font-medium uppercase tracking-wider text-tertiary-container">已做得唔錯</p>
+          <ul className="mt-2 list-disc space-y-1.5 pl-5 text-sm leading-relaxed text-tertiary-container/95">
             {norm.strengths.map((b, i) => (
               <li key={i}>{b}</li>
             ))}
@@ -154,14 +154,14 @@ export function SeoScanPanel({
 
       {norm.verificationChecklist.length > 0 ? (
         <div>
-          <p className="text-xs font-medium uppercase tracking-wider text-white/50">驗證／QA 清單</p>
+          <p className="text-xs font-medium uppercase tracking-wider text-on-surface/50">驗證／QA 清單</p>
           <ul className="mt-2 space-y-2">
             {norm.verificationChecklist.map((line, i) => (
               <li
                 key={i}
-                className="flex gap-2 rounded-lg border border-white/[0.06] bg-black/20 px-3 py-2 text-sm text-foreground-muted"
+                className="flex gap-2 rounded-lg border border-outline-variant/12 bg-surface-container-high px-3 py-2 text-sm text-foreground-muted"
               >
-                <span className="font-mono text-[11px] text-amber-200/70" aria-hidden>
+                <span className="font-mono text-[11px] text-primary/70" aria-hidden>
                   {i + 1}.
                 </span>
                 <span className="min-w-0 flex-1 leading-relaxed">{line}</span>
@@ -173,8 +173,8 @@ export function SeoScanPanel({
 
       {bullets.length > 0 ? (
         <div>
-          <p className="text-xs font-medium uppercase tracking-wider text-white/50">其他重點</p>
-          <ul className="mt-2 list-disc space-y-2 pl-5 text-sm leading-relaxed text-white/80">
+          <p className="text-xs font-medium uppercase tracking-wider text-on-surface/50">其他重點</p>
+          <ul className="mt-2 list-disc space-y-2 pl-5 text-sm leading-relaxed text-on-surface">
             {bullets.map((b, i) => (
               <li key={i}>{b}</li>
             ))}
@@ -186,9 +186,9 @@ export function SeoScanPanel({
 }
 
 function impactClass(impact: string): string {
-  if (impact === "high") return "bg-amber-400/20 text-amber-100";
-  if (impact === "medium") return "bg-white/10 text-foreground-muted";
-  return "bg-white/[0.06] text-foreground-subtle";
+  if (impact === "high") return "bg-secondary-container/90 text-primary";
+  if (impact === "medium") return "bg-surface-container-high text-foreground-muted";
+  return "bg-surface-container-high text-foreground-subtle";
 }
 
 function normalizeFullActionPriorityToken(raw: unknown): "P0" | "P1" | "P2" | null {
@@ -263,7 +263,7 @@ function CopyTextButton({ text, label }: { text: string; label: string }) {
     <button
       type="button"
       onClick={onCopy}
-      className="crawlme-focus-ring shrink-0 rounded-md border border-white/15 bg-white/[0.06] px-2 py-1 text-[11px] font-medium text-amber-200/95 transition hover:bg-white/10"
+      className="insights-focus-ring shrink-0 rounded-md border border-outline-variant/20 bg-surface-container-high px-2 py-1 text-[11px] font-medium text-primary transition hover:bg-surface-container-high"
     >
       {copied ? "已複製 ✓" : label}
     </button>
@@ -280,8 +280,8 @@ export function PreviewActionImplementationSteps({ steps }: { steps: unknown }) 
     .filter((s): s is ParsedStep => s !== null);
   if (parsed.length === 0) return null;
   return (
-    <div className="mt-3 border-t border-white/[0.06] pt-3">
-      <p className="text-[11px] font-medium text-white/45">實作步驟</p>
+    <div className="mt-3 border-t border-outline-variant/12 pt-3">
+      <p className="text-[11px] font-medium text-on-surface-variant">實作步驟</p>
       <ol className="mt-2 list-none space-y-2 pl-0">
         {parsed.map((s, j) => (
           <ExpandableActionStep key={j} step={s} index={j + 1} />
@@ -325,9 +325,9 @@ function ExpandableActionStep({ step, index }: { step: ParsedStep; index: number
 
   if (!hasExtra) {
     return (
-      <li className="rounded-lg border border-white/[0.06] bg-black/30 px-3 py-2">
+      <li className="rounded-lg border border-outline-variant/12 bg-surface-container-low px-3 py-2">
         <span className="text-sm text-foreground-muted">
-          <span className="mr-2 font-mono tabular-nums text-white/35">{index}.</span>
+          <span className="mr-2 font-mono tabular-nums text-on-surface-variant">{index}.</span>
           {step.text}
         </span>
       </li>
@@ -335,24 +335,24 @@ function ExpandableActionStep({ step, index }: { step: ParsedStep; index: number
   }
 
   return (
-    <li className="rounded-lg border border-white/[0.06] bg-black/30">
+    <li className="rounded-lg border border-outline-variant/12 bg-surface-container-low">
       <details className="group">
         <summary className="flex cursor-pointer list-none items-start justify-between gap-2 py-2 pl-3 pr-2 [&::-webkit-details-marker]:hidden">
           <span className="min-w-0 flex-1 text-left text-sm text-foreground-muted marker:content-none">
-            <span className="mr-2 font-mono tabular-nums text-white/35">{index}.</span>
+            <span className="mr-2 font-mono tabular-nums text-on-surface-variant">{index}.</span>
             {step.text}
           </span>
-          <span className="shrink-0 text-[10px] text-white/40 transition-transform group-open:-rotate-180">
+          <span className="shrink-0 text-[10px] text-on-surface/40 transition-transform group-open:-rotate-180">
             ▼
           </span>
         </summary>
-        <div className="space-y-3 border-t border-white/[0.06] px-3 pb-3 pt-2">
+        <div className="space-y-3 border-t border-outline-variant/12 px-3 pb-3 pt-2">
           {step.detail ? (() => {
             const { placement, body } = splitPlacementLine(step.detail);
             if (placement) {
               return (
                 <>
-                  <p className="rounded-lg border border-amber-400/25 bg-amber-400/[0.08] px-3 py-2 text-xs font-medium leading-relaxed text-amber-100/95">
+                  <p className="rounded-lg border border-primary/20 bg-secondary-container/60 px-3 py-2 text-xs font-medium leading-relaxed text-primary">
                     {placement}
                   </p>
                   {body ? (
@@ -369,14 +369,14 @@ function ExpandableActionStep({ step, index }: { step: ParsedStep; index: number
             <div>
               <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
                 <div>
-                  <span className="text-[11px] font-medium tracking-wide text-white/55">程式碼片段</span>
-                  <p className="mt-0.5 text-[10px] leading-snug text-white/35">
+                  <span className="text-[11px] font-medium tracking-wide text-on-surface/55">程式碼片段</span>
+                  <p className="mt-0.5 text-[10px] leading-snug text-on-surface-variant">
                     只係下面呢段要複製；上面係說明。
                   </p>
                 </div>
                 <CopyTextButton text={snippetToShow} label="複製" />
               </div>
-              <pre className="max-h-[240px] overflow-auto rounded-md border border-white/10 bg-black/50 p-3 font-mono text-[11px] leading-relaxed text-emerald-100/95">
+              <pre className="max-h-[240px] overflow-auto rounded-md border border-outline-variant/20 bg-surface-container-low p-3 font-mono text-[11px] leading-relaxed text-tertiary-container">
                 {snippetToShow}
               </pre>
             </div>
@@ -400,7 +400,7 @@ export function FullActionsPanel({ data }: { data: unknown }) {
       {data.map((item, i) => {
         if (!isRecord(item)) {
           return (
-            <li key={i} className="rounded-lg border border-white/10 bg-black/30 p-3 text-xs text-foreground-muted">
+            <li key={i} className="rounded-lg border border-outline-variant/20 bg-surface-container-low p-3 text-xs text-foreground-muted">
               無法解析此項目
             </li>
           );
@@ -417,13 +417,13 @@ export function FullActionsPanel({ data }: { data: unknown }) {
         return (
           <li
             key={i}
-            className="rounded-xl border border-white/[0.08] bg-black/25 p-4"
+            className="rounded-xl border border-outline-variant/15 bg-surface-container-lowest p-4"
           >
-            <p className="font-medium text-white">{title}</p>
+            <p className="font-medium text-on-surface">{title}</p>
             <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px]">
               {priorityP ? (
                 <span className="inline-flex items-center gap-1.5" title="優先次序（P0 最緊要）">
-                  <span className="text-[10px] font-medium text-white/45">優先</span>
+                  <span className="text-[10px] font-medium text-on-surface-variant">優先</span>
                   <span
                     className={`rounded-md px-2 py-0.5 font-mono text-[10px] font-semibold tabular-nums ${priorityBadgeClass(priorityP)}`}
                   >
@@ -437,7 +437,7 @@ export function FullActionsPanel({ data }: { data: unknown }) {
                 </span>
               ) : null}
               {effort ? (
-                <span className="rounded-md bg-white/[0.06] px-2 py-0.5 text-foreground-muted">
+                <span className="rounded-md bg-surface-container-high px-2 py-0.5 text-foreground-muted">
                   工作量：{effort}
                 </span>
               ) : null}
@@ -488,7 +488,7 @@ function CompetitorFavicon({ pageUrl }: { pageUrl: string }) {
   if (err || !src) {
     return (
       <span
-        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-400/15 text-xs font-semibold uppercase text-amber-100 ring-1 ring-white/10"
+        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-secondary-container/80 text-xs font-semibold uppercase text-primary ring-1 ring-primary/20"
         aria-hidden
       >
         {initial}
@@ -503,7 +503,7 @@ function CompetitorFavicon({ pageUrl }: { pageUrl: string }) {
       height={36}
       sizes="36px"
       unoptimized
-      className="h-9 w-9 shrink-0 rounded-lg bg-white/[0.06] object-contain ring-1 ring-white/10"
+      className="h-9 w-9 shrink-0 rounded-lg bg-surface-container-high object-contain ring-1 ring-white/10"
       loading="lazy"
       onError={() => setErr(true)}
     />
@@ -534,11 +534,11 @@ export function CompetitorSitesRow({ facts }: { facts: unknown }) {
               href={href}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex min-w-0 items-center gap-3 rounded-xl border border-white/12 bg-black/30 px-3 py-2.5 transition hover:border-amber-400/35 hover:bg-black/40"
+              className="flex min-w-0 items-center gap-3 rounded-xl border border-outline-variant/18 bg-surface-container-low px-3 py-2.5 transition hover:border-primary/30 hover:bg-surface-container-high"
             >
               <CompetitorFavicon pageUrl={href} />
               <span className="min-w-0 flex-1">
-                <span className="block truncate text-sm font-medium leading-snug text-white/90">{label}</span>
+                <span className="block truncate text-sm font-medium leading-snug text-on-surface">{label}</span>
                 <span className="mt-0.5 block truncate font-mono text-[11px] text-foreground-subtle">{host}</span>
               </span>
             </a>
@@ -615,8 +615,8 @@ export function CompetitorAnalysisPanel({ data }: { data: unknown }) {
             className={`grid gap-3 ${twoCol ? "sm:grid-cols-2" : ""}`}
           >
             {hasPrimary ? (
-              <div className="rounded-lg border border-white/[0.06] bg-black/25 p-3">
-                <p className="text-xs font-medium text-white/70">你嘅頁面（主題線索）</p>
+              <div className="rounded-lg border border-outline-variant/12 bg-surface-container-lowest p-3">
+                <p className="text-xs font-medium text-on-surface/70">你嘅頁面（主題線索）</p>
                 <ul className="mt-2 list-disc space-y-1 pl-4 text-sm text-foreground-muted">
                   {primaryList.map((t, i) => (
                     <li key={i}>{t}</li>
@@ -625,8 +625,8 @@ export function CompetitorAnalysisPanel({ data }: { data: unknown }) {
               </div>
             ) : null}
             {hasCompetitor ? (
-              <div className="rounded-lg border border-white/[0.06] bg-black/25 p-3">
-                <p className="text-xs font-medium text-white/70">競爭對手（主題線索）</p>
+              <div className="rounded-lg border border-outline-variant/12 bg-surface-container-lowest p-3">
+                <p className="text-xs font-medium text-on-surface/70">競爭對手（主題線索）</p>
                 <ul className="mt-2 list-disc space-y-1 pl-4 text-sm text-foreground-muted">
                   {competitorList.map((t, i) => (
                     <li key={i}>{t}</li>
@@ -634,7 +634,7 @@ export function CompetitorAnalysisPanel({ data }: { data: unknown }) {
                 </ul>
               </div>
             ) : hasPrimary ? (
-              <p className="rounded-lg border border-white/[0.06] bg-black/20 p-3 text-[11px] leading-relaxed text-foreground-subtle sm:col-span-2">
+              <p className="rounded-lg border border-outline-variant/12 bg-surface-container-high p-3 text-[11px] leading-relaxed text-foreground-subtle sm:col-span-2">
                 對手主題線索：今次未有可顯示嘅要點——多數係對手快照字極少、擷取唔完整，或模型未輸出對手主題。
               </p>
             ) : null}
@@ -644,7 +644,7 @@ export function CompetitorAnalysisPanel({ data }: { data: unknown }) {
 
       {positioningMatrix.length > 0 ? (
         <div>
-          <p className="text-xs font-medium leading-snug text-white/75">
+          <p className="text-xs font-medium leading-snug text-on-surface">
             你同對手：各自點樣定位自己
           </p>
           <ul className="mt-2 space-y-3">
@@ -653,14 +653,14 @@ export function CompetitorAnalysisPanel({ data }: { data: unknown }) {
               return (
                 <li
                   key={i}
-                  className="rounded-lg border border-white/[0.06] bg-black/20 p-3 text-sm text-foreground-muted"
+                  className="rounded-lg border border-outline-variant/12 bg-surface-container-high p-3 text-sm text-foreground-muted"
                 >
                   {typeof row.competitor_url === "string" ? (
                     <a
                       href={row.competitor_url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-start gap-2 rounded-lg border border-white/[0.06] bg-black/30 p-2 transition hover:border-amber-400/30"
+                      className="flex items-start gap-2 rounded-lg border border-outline-variant/12 bg-surface-container-low p-2 transition hover:border-primary/25"
                     >
                       <CompetitorFavicon pageUrl={row.competitor_url} />
                       <span className="min-w-0 break-all font-mono text-[11px] leading-relaxed text-foreground-muted">
@@ -670,18 +670,18 @@ export function CompetitorAnalysisPanel({ data }: { data: unknown }) {
                   ) : null}
                   {typeof row.their_inferred_positioning === "string" ? (
                     <p className="mt-1">
-                      <span className="text-white/50">對方：</span>
+                      <span className="text-on-surface/50">對方：</span>
                       {row.their_inferred_positioning}
                     </p>
                   ) : null}
                   {typeof row.your_inferred_positioning === "string" ? (
                     <p className="mt-1">
-                      <span className="text-white/50">你：</span>
+                      <span className="text-on-surface/50">你：</span>
                       {row.your_inferred_positioning}
                     </p>
                   ) : null}
                   {typeof row.strategic_takeaway === "string" ? (
-                    <p className="mt-1 text-white/80">{row.strategic_takeaway}</p>
+                    <p className="mt-1 text-on-surface">{row.strategic_takeaway}</p>
                   ) : null}
                 </li>
               );
@@ -692,22 +692,22 @@ export function CompetitorAnalysisPanel({ data }: { data: unknown }) {
 
       {contentGaps.length > 0 ? (
         <div>
-          <p className="text-xs font-medium leading-snug text-white/75">
+          <p className="text-xs font-medium leading-snug text-on-surface">
             內容／頁面上可以補嘅位
           </p>
           <ul className="mt-2 space-y-3">
             {contentGaps.map((row, i) => {
               if (!isRecord(row)) return null;
               return (
-                <li key={i} className="rounded-lg border border-amber-400/15 bg-amber-400/[0.06] p-3 text-sm">
+                <li key={i} className="rounded-lg border border-primary/15 bg-secondary-container/70 p-3 text-sm">
                   {typeof row.gap_description === "string" ? (
-                    <p className="font-medium text-amber-100/95">{row.gap_description}</p>
+                    <p className="font-medium text-primary">{row.gap_description}</p>
                   ) : null}
                   {typeof row.what_competitor_does === "string" ? (
                     <p className="mt-1 text-foreground-muted">{row.what_competitor_does}</p>
                   ) : null}
                   {typeof row.what_you_should_do === "string" ? (
-                    <p className="mt-2 text-white/80">{row.what_you_should_do}</p>
+                    <p className="mt-2 text-on-surface">{row.what_you_should_do}</p>
                   ) : null}
                 </li>
               );
@@ -718,7 +718,7 @@ export function CompetitorAnalysisPanel({ data }: { data: unknown }) {
 
       {topGaps.length > 0 ? (
         <div>
-          <p className="text-xs font-medium leading-snug text-white/75">
+          <p className="text-xs font-medium leading-snug text-on-surface">
             比起對手，你仲可以加強嘅地方
           </p>
           <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-foreground-muted">
@@ -733,7 +733,7 @@ export function CompetitorAnalysisPanel({ data }: { data: unknown }) {
         <div className="flex flex-col gap-3 sm:flex-row">
           {hooks.length > 0 ? (
             <div className="flex-1">
-              <p className="text-xs font-medium leading-snug text-white/75">
+              <p className="text-xs font-medium leading-snug text-on-surface">
                 點樣突出自己、同對手唔同
               </p>
               <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-foreground-muted">
@@ -745,7 +745,7 @@ export function CompetitorAnalysisPanel({ data }: { data: unknown }) {
           ) : null}
           {diffOpp.length > 0 ? (
             <div className="flex-1">
-              <p className="text-xs font-medium leading-snug text-white/75">可以點樣做得更唔同</p>
+              <p className="text-xs font-medium leading-snug text-on-surface">可以點樣做得更唔同</p>
               <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-foreground-muted">
                 {diffOpp.map((h, i) => (
                   <li key={i}>{h}</li>
@@ -775,8 +775,8 @@ const PSI_CATS: {
 ];
 
 function psiBarClass(score: number): string {
-  if (score >= 90) return "bg-emerald-400/85";
-  if (score >= 50) return "bg-amber-400/80";
+  if (score >= 90) return "bg-tertiary-fixed/90";
+  if (score >= 50) return "bg-primary/80";
   return "bg-red-400/75";
 }
 
@@ -802,19 +802,19 @@ export function UnifiedScorePanel({
   return (
     <div className="space-y-4">
       <div>
-        <h2 className="text-lg font-semibold tracking-tight text-white">總分</h2>
+        <h2 className="text-lg font-semibold tracking-tight text-on-surface">總分</h2>
         <div className="mt-4 flex flex-wrap items-baseline gap-3">
-          <span className="text-4xl font-semibold tabular-nums text-emerald-200">{composite}</span>
+          <span className="text-4xl font-semibold tabular-nums text-tertiary">{composite}</span>
           <span className="text-sm text-foreground-muted">／100</span>
         </div>
         <p className="mt-2 text-[11px] leading-relaxed text-foreground-subtle">
           {psiAvg !== null && aiOverall !== null ? (
             <>
-              （Google Lab 平均 <span className="tabular-nums text-white/80">{psiAvg}</span>
+              （Google Lab 平均 <span className="tabular-nums text-on-surface">{psiAvg}</span>
               {" + AI "}
-              <span className="tabular-nums text-white/80">{aiOverall}</span>
+              <span className="tabular-nums text-on-surface">{aiOverall}</span>
               ）÷ 2
-              <span className="text-white/50"> · </span>
+              <span className="text-on-surface/50"> · </span>
               AI 取報告總分；冇總分則用五維平均。
             </>
           ) : psiAvg !== null ? (
@@ -824,7 +824,7 @@ export function UnifiedScorePanel({
             </>
           ) : (
             <>
-              ＝ AI 報告評分 <span className="tabular-nums text-white/80">{aiOverall}</span>
+              ＝ AI 報告評分 <span className="tabular-nums text-on-surface">{aiOverall}</span>
               （未跑 Google Lab）。
             </>
           )}
@@ -832,17 +832,17 @@ export function UnifiedScorePanel({
       </div>
 
       {payload && (scores || err || analyzed) ? (
-        <details className="group rounded-lg border border-white/[0.08] bg-black/20 px-3 py-2">
+        <details className="group rounded-lg border border-outline-variant/15 bg-surface-container-high px-3 py-2">
           <summary className="cursor-pointer list-none text-xs font-medium text-foreground-muted [&::-webkit-details-marker]:hidden">
             <span className="inline group-open:hidden">展開睇 Google PageSpeed 分項</span>
             <span className="hidden group-open:inline">收埋 Google PageSpeed 分項</span>
           </summary>
-          <div className="mt-3 space-y-3 border-t border-white/[0.06] pt-3">
+          <div className="mt-3 space-y-3 border-t border-outline-variant/12 pt-3">
             {analyzed ? (
               <p className="break-all font-mono text-[11px] text-foreground-muted">{analyzed}</p>
             ) : null}
             {err ? (
-              <p className="rounded-lg border border-amber-400/25 bg-amber-400/10 px-3 py-2 text-sm text-amber-100">
+              <p className="rounded-lg border border-primary/20 bg-secondary-container/60 px-3 py-2 text-sm text-primary">
                 Google 測試：{err}
               </p>
             ) : null}
@@ -853,18 +853,18 @@ export function UnifiedScorePanel({
                   const n = typeof v === "number" ? v : null;
                   const pct = n !== null ? Math.max(0, Math.min(100, n)) : 0;
                   return (
-                    <li key={key} className="rounded-lg border border-white/[0.06] bg-black/25 px-3 py-2">
+                    <li key={key} className="rounded-lg border border-outline-variant/12 bg-surface-container-lowest px-3 py-2">
                       <div className="flex items-center justify-between gap-2 text-xs">
                         <span className="text-foreground-muted">
                           {labelEn}
-                          <span className="ml-1.5 text-[10px] text-white/35">{labelZh}</span>
+                          <span className="ml-1.5 text-[10px] text-on-surface-variant">{labelZh}</span>
                         </span>
-                        <span className="font-mono tabular-nums text-white/90">
+                        <span className="font-mono tabular-nums text-on-surface">
                           {n !== null ? n : "—"}
                         </span>
                       </div>
                       {n !== null ? (
-                        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/10">
+                        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-surface-container-high">
                           <div
                             className={`h-full rounded-full ${psiBarClass(n)}`}
                             style={{ width: `${pct}%` }}

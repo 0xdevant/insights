@@ -2,7 +2,7 @@
 
 import { useAuth, useClerk } from "@clerk/nextjs";
 import dynamic from "next/dynamic";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { PreviewActionImplementationSteps } from "@/components/ScanResultBlocks";
 import { computeUnifiedScore } from "@/lib/report-score";
 import {
@@ -30,7 +30,7 @@ const UnifiedScorePanel = dynamic(
 );
 const CompetitorSitesRow = dynamic(
   () => import("@/components/ScanResultBlocks").then((m) => ({ default: m.CompetitorSitesRow })),
-  { loading: () => <div className="mt-4 h-12 animate-pulse rounded-xl bg-white/[0.06]" aria-hidden /> },
+  { loading: () => <div className="mt-4 h-12 animate-pulse rounded-xl bg-surface-container-high" aria-hidden /> },
 );
 const PriorityFindingsPreview = dynamic(
   () =>
@@ -41,7 +41,7 @@ const PriorityFindingsPreview = dynamic(
 function PanelChunkSkeleton() {
   return (
     <div
-      className="h-20 animate-pulse rounded-lg bg-white/[0.06]"
+      className="h-20 animate-pulse rounded-lg bg-surface-container-high"
       aria-hidden
     />
   );
@@ -57,9 +57,9 @@ function withHttpsScheme(raw: string): string {
 /** ① 幫手留 comment ② 追蹤 Threads + IG — 額度用盡提示 only（主頁 hero 有主要 CTA）。 */
 function SocialSupportStrip() {
   const base =
-    "crawlme-focus-ring inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg border text-center font-medium transition box-border";
-  const cls = `${base} border-amber-400/30 bg-black/30 px-3 py-2 text-xs text-amber-100 hover:bg-black/40`;
-  const followInner = `${base} border-amber-400/25 bg-black/40 px-2.5 py-1.5 text-xs text-amber-100 hover:bg-black/50`;
+    "insights-focus-ring inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg border text-center font-medium transition box-border";
+  const cls = `${base} border-primary/25 bg-surface-container-lowest px-3 py-2 text-xs text-primary hover:bg-surface-container-high`;
+  const followInner = `${base} border-primary/20 bg-surface-container-low px-2.5 py-1.5 text-xs text-primary hover:bg-surface-container-high`;
 
   return (
     <div className="flex flex-wrap items-center gap-2">
@@ -71,8 +71,8 @@ function SocialSupportStrip() {
       >
         幫手留 comment
       </a>
-      <div className="inline-flex max-w-full flex-wrap items-center gap-1.5 rounded-lg border border-amber-400/30 bg-black/25 px-2 py-1.5">
-        <span className="shrink-0 pl-0.5 text-[11px] text-amber-200/70">追蹤</span>
+      <div className="inline-flex max-w-full flex-wrap items-center gap-1.5 rounded-lg border border-primary/25 bg-surface-container-lowest px-2 py-1.5">
+        <span className="shrink-0 pl-0.5 text-[11px] text-primary/80">追蹤</span>
         <a
           href={THREADS_PROFILE_URL}
           target="_blank"
@@ -100,7 +100,7 @@ const Turnstile = dynamic(
     ssr: false,
     loading: () => (
       <div
-        className="flex min-h-[65px] w-fit max-w-full items-center rounded-md border border-white/10 bg-black/30 px-3 text-xs text-foreground-muted"
+        className="flex min-h-[65px] w-fit max-w-full items-center rounded-md border border-outline-variant/20 bg-surface-container-low px-3 text-xs text-foreground-muted"
         role="status"
         aria-live="polite"
       >
@@ -115,6 +115,8 @@ type ScanResponse = {
   signInRequired?: boolean;
   upgrade?: boolean;
   ipFreeExhausted?: boolean;
+  userFreeExhausted?: boolean;
+  deviceFreeExhausted?: boolean;
   globalQuotaExhausted?: boolean;
   paid?: boolean;
   freeGlobalRemaining?: number;
@@ -167,6 +169,72 @@ type ScanResponse = {
 
 const turnstileSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
 
+const INSIGHTS_DEVICE_LOCAL_KEY = "insights_device_id";
+
+const SESSION_SCAN_PREFIX = "insights_last_scan:v1";
+
+function sessionScanStorageKey(userId: string): string {
+  return `${SESSION_SCAN_PREFIX}:${userId}`;
+}
+
+/** Last successful scan in this tab — survives refresh; cleared when tab closes or user starts a new scan. */
+function persistLastScanSession(userId: string, scannedUrl: string, data: ScanResponse): void {
+  if (typeof window === "undefined") return;
+  try {
+    sessionStorage.setItem(
+      sessionScanStorageKey(userId),
+      JSON.stringify({ v: 1, url: scannedUrl, result: data, savedAt: Date.now() }),
+    );
+  } catch {
+    // Quota, private mode, or payload too large for sessionStorage
+  }
+}
+
+function loadLastScanSession(userId: string): { url: string; result: ScanResponse } | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = sessionStorage.getItem(sessionScanStorageKey(userId));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { v?: number; url?: string; result?: ScanResponse };
+    if (
+      parsed.v !== 1 ||
+      typeof parsed.url !== "string" ||
+      !parsed.result ||
+      typeof parsed.result !== "object"
+    ) {
+      return null;
+    }
+    if (parsed.result.upgrade || parsed.result.error) return null;
+    return { url: parsed.url, result: parsed.result };
+  } catch {
+    return null;
+  }
+}
+
+function clearLastScanSession(userId: string): void {
+  if (typeof window === "undefined") return;
+  try {
+    sessionStorage.removeItem(sessionScanStorageKey(userId));
+  } catch {
+    // ignore
+  }
+}
+
+/** Stable per-browser profile id (survives VPN IP changes; cleared if user wipes site data). */
+function getOrCreateDeviceId(): string {
+  if (typeof window === "undefined") return "";
+  try {
+    let id = window.localStorage.getItem(INSIGHTS_DEVICE_LOCAL_KEY);
+    if (!id) {
+      id = crypto.randomUUID();
+      window.localStorage.setItem(INSIGHTS_DEVICE_LOCAL_KEY, id);
+    }
+    return id;
+  } catch {
+    return crypto.randomUUID();
+  }
+}
+
 /** Shown while /api/scan runs — informational only (no fake step-by-step progress). */
 const SCAN_LOADING_STEPS = [
   {
@@ -184,13 +252,16 @@ const SCAN_LOADING_STEPS = [
 ] as const;
 
 export function ScanForm() {
-  const { isSignedIn, isLoaded } = useAuth();
+  const { userId, isSignedIn, isLoaded } = useAuth();
   const { openSignIn } = useClerk();
   const [url, setUrl] = useState("");
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const [paid, setPaid] = useState<boolean | null>(null);
   const [quotaBypass, setQuotaBypass] = useState(false);
   const [ipAlreadyUsedFree, setIpAlreadyUsedFree] = useState(false);
+  const [userAlreadyUsedFree, setUserAlreadyUsedFree] = useState(false);
+  const [deviceAlreadyUsedFree, setDeviceAlreadyUsedFree] = useState(false);
+  const [deviceId, setDeviceId] = useState<string | null>(null);
   const [freeGlobalRemaining, setFreeGlobalRemaining] = useState<number | null>(null);
   const [freeGlobalLimit, setFreeGlobalLimit] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
@@ -203,13 +274,19 @@ export function ScanForm() {
   const [turnstileError, setTurnstileError] = useState<string | null>(null);
 
   const refreshMe = useCallback(() => {
-    return fetch("/api/me")
+    const qs =
+      deviceId && deviceId.length > 0
+        ? `?deviceId=${encodeURIComponent(deviceId)}`
+        : "";
+    return fetch(`/api/me${qs}`)
       .then((r) => r.json())
       .then(
         (d: {
           paid?: boolean;
           quotaBypass?: boolean;
           ipAlreadyUsedFree?: boolean;
+          userAlreadyUsedFree?: boolean;
+          deviceAlreadyUsedFree?: boolean;
           freeGlobalRemaining?: number;
           freeGlobalLimit?: number;
         }) => {
@@ -217,6 +294,8 @@ export function ScanForm() {
           if (d.paid) return;
           setQuotaBypass(!!d.quotaBypass);
           setIpAlreadyUsedFree(!!d.ipAlreadyUsedFree);
+          setUserAlreadyUsedFree(!!d.userAlreadyUsedFree);
+          setDeviceAlreadyUsedFree(!!d.deviceAlreadyUsedFree);
           setFreeGlobalRemaining(
             typeof d.freeGlobalRemaining === "number" ? d.freeGlobalRemaining : null,
           );
@@ -227,10 +306,25 @@ export function ScanForm() {
         setPaid(false);
         setQuotaBypass(false);
         setIpAlreadyUsedFree(false);
+        setUserAlreadyUsedFree(false);
+        setDeviceAlreadyUsedFree(false);
         setFreeGlobalRemaining(null);
         setFreeGlobalLimit(null);
       });
+  }, [deviceId]);
+
+  useEffect(() => {
+    setDeviceId(getOrCreateDeviceId());
   }, []);
+
+  /** Restore last successful report after refresh (same browser tab + signed-in user). */
+  useLayoutEffect(() => {
+    if (!isLoaded || !isSignedIn || !userId) return;
+    const restored = loadLastScanSession(userId);
+    if (!restored) return;
+    setResult(restored.result);
+    setUrl(restored.url);
+  }, [isLoaded, isSignedIn, userId]);
 
   useEffect(() => {
     void refreshMe();
@@ -238,14 +332,26 @@ export function ScanForm() {
 
   const needsTurnstile = Boolean(turnstileSiteKey);
 
+  const experienceBlocked =
+    paid === false &&
+    !quotaBypass &&
+    (ipAlreadyUsedFree || userAlreadyUsedFree || deviceAlreadyUsedFree);
+
   const canSubmit = useMemo(() => {
     if (!url.trim()) return false;
     if (!isLoaded) return false;
     if (!isSignedIn) return true;
     if (needsTurnstile && !turnstileToken) return false;
-    if (paid === false && !quotaBypass && ipAlreadyUsedFree) return false;
+    if (experienceBlocked) return false;
     return true;
-  }, [isLoaded, isSignedIn, needsTurnstile, paid, quotaBypass, ipAlreadyUsedFree, turnstileToken, url]);
+  }, [
+    isLoaded,
+    isSignedIn,
+    needsTurnstile,
+    experienceBlocked,
+    turnstileToken,
+    url,
+  ]);
 
   const runScan = useCallback(async () => {
     setError(null);
@@ -262,10 +368,11 @@ export function ScanForm() {
     setResult(null);
     setLoading(true);
     try {
-      const body: { url: string; turnstileToken?: string } = {
+      const body: { url: string; turnstileToken?: string; deviceId?: string } = {
         url: withHttpsScheme(url),
       };
       if (needsTurnstile && turnstileToken) body.turnstileToken = turnstileToken;
+      if (deviceId) body.deviceId = deviceId;
 
       const res = await fetch("/api/scan", {
         method: "POST",
@@ -289,6 +396,9 @@ export function ScanForm() {
         return;
       }
       setResult(data);
+      if (userId) {
+        persistLastScanSession(userId, withHttpsScheme(url), data);
+      }
       if (typeof data.paid === "boolean") setPaid(data.paid);
       if (data.paid === false && typeof data.freeGlobalRemaining === "number") {
         setFreeGlobalRemaining(data.freeGlobalRemaining);
@@ -302,26 +412,76 @@ export function ScanForm() {
     } finally {
       setLoading(false);
     }
-  }, [isLoaded, isSignedIn, needsTurnstile, openSignIn, refreshMe, turnstileToken, url]);
+  }, [deviceId, isLoaded, isSignedIn, needsTurnstile, openSignIn, refreshMe, turnstileToken, url, userId]);
 
   const hasSuccessResult = Boolean(result && !result.error && !result.upgrade);
   const showInputForm = !hasSuccessResult && !loading;
+  /** Hide marketing hero while analyzing or viewing report (focus on content). */
+  const showMarketingHero = !loading && !hasSuccessResult;
 
   const resetToNewScan = useCallback(() => {
+    if (userId) clearLastScanSession(userId);
     setResult(null);
     setError(null);
     setTurnstileToken(null);
-  }, []);
+  }, [userId]);
 
   return (
     <div className="flex flex-col gap-10">
+      {showMarketingHero ? (
+        <header className="space-y-3">
+          <h1 className="font-headline text-balance text-4xl font-semibold tracking-tight text-on-surface sm:text-5xl">
+            拎一份專業營銷報告
+          </h1>
+          <ul className="list-none space-y-2 pl-0 text-pretty text-lg leading-relaxed text-foreground-muted">
+            <li>
+              <span aria-hidden>🔍 </span>
+              <strong className="font-medium text-on-surface">SEO 分析</strong>
+            </li>
+            <li>
+              <span aria-hidden>📊 </span>
+              <strong className="font-medium text-on-surface">
+                市場＋競爭對手分析
+              </strong>
+            </li>
+            <li>
+              <span aria-hidden>🛠️ </span>
+              仲會直接俾你「
+              <strong className="font-medium text-on-surface">可以落手做</strong>
+              」嘅技術建議
+            </li>
+          </ul>
+          <div
+            className="inline-flex max-w-full flex-wrap items-center gap-x-2 gap-y-1 rounded-lg border border-primary/20 bg-secondary-container/70 px-3 py-2 text-xs leading-snug text-on-surface"
+            role="note"
+          >
+            <span className="shrink-0 font-medium text-primary">額度</span>
+            <span className="text-on-surface">
+              每次分析都會出
+              <strong className="font-medium text-primary">
+                完整行動清單
+              </strong>
+              同
+              <strong className="font-medium text-primary">
+                優先建議
+              </strong>
+              。
+              <strong className="font-medium text-primary">
+                體驗額度
+              </strong>
+              ：每個帳戶、瀏覽器檔案同 IP 各限做 1 次體驗（換 VPN 唔會繞過帳戶）；全站每日總名額有限（先到先得）。
+            </span>
+          </div>
+        </header>
+      ) : null}
+
       {showInputForm && !isLoaded ? (
-        <section className="rounded-2xl border border-white/10 bg-[#0b0c10] p-6">
-          <div className="h-36 animate-pulse rounded-xl bg-white/[0.06]" aria-hidden />
+        <section className="rounded-2xl border border-outline-variant/20 bg-surface-container-low p-6">
+          <div className="h-36 animate-pulse rounded-xl bg-surface-container-high" aria-hidden />
           <p className="sr-only">載入帳戶狀態…</p>
         </section>
       ) : showInputForm && isLoaded ? (
-        <section className="rounded-2xl border border-white/10 bg-[#0b0c10] p-6">
+        <section className="rounded-2xl border border-outline-variant/20 bg-surface-container-low p-6">
           <form
             className="flex flex-col gap-4"
             onSubmit={(e) => {
@@ -350,19 +510,19 @@ export function ScanForm() {
                       ? "turnstile-hint"
                       : undefined
                 }
-                className="w-full rounded-xl border border-white/10 bg-black/40 px-4 py-3 text-sm text-white outline-none ring-amber-400/30 placeholder:text-foreground-subtle focus:border-amber-400/50 focus:ring-2"
+                className="w-full rounded-xl border border-outline-variant/20 bg-surface-container-lowest px-4 py-3 text-sm text-on-surface outline-none ring-primary/20 placeholder:text-foreground-subtle focus:border-primary/40 focus:ring-2 focus:ring-primary/15"
               />
               <button
                 type="submit"
                 disabled={!canSubmit || loading}
-                className="crawlme-focus-ring shrink-0 rounded-xl bg-amber-400 px-5 py-3 text-sm font-semibold text-black transition hover:bg-amber-300 disabled:cursor-not-allowed disabled:opacity-40"
+                className="insights-focus-ring shrink-0 rounded-xl bg-gradient-to-b from-primary to-primary-container px-5 py-3 text-sm font-semibold text-on-primary shadow-sm transition hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 開始分析
               </button>
             </div>
             {!isSignedIn ? (
               <p id="auth-before-scan" className="text-xs text-foreground-muted">
-                撳「開始分析」會請你先<strong className="text-white/85">登入或註冊</strong>；登入後會用同一個網址繼續。
+                撳「開始分析」會請你先<strong className="text-on-surface">登入或註冊</strong>；登入後會用同一個網址繼續。
               </p>
             ) : null}
             {needsTurnstile && isSignedIn ? (
@@ -394,22 +554,31 @@ export function ScanForm() {
             ) : null}
             {isSignedIn &&
             (paid === true ||
-              (!quotaBypass && ipAlreadyUsedFree) ||
+              (!quotaBypass &&
+                (userAlreadyUsedFree || deviceAlreadyUsedFree || ipAlreadyUsedFree)) ||
               (!quotaBypass && freeGlobalRemaining !== null && freeGlobalLimit !== null) ||
               (paid === false && quotaBypass)) ? (
-              <div className="space-y-3 rounded-xl border border-white/[0.08] bg-black/25 px-3 py-3 text-xs text-foreground-muted">
+              <div className="space-y-3 rounded-xl border border-outline-variant/15 bg-surface-container-lowest px-3 py-3 text-xs text-foreground-muted">
                 {paid === true ? (
                   <p className="text-foreground-subtle">你嘅帳戶唔受體驗額度限制。</p>
+                ) : !quotaBypass && userAlreadyUsedFree ? (
+                  <p className="text-primary">
+                    此帳戶已用過體驗額度。換 VPN 亦唔會再開名額；聯絡我哋或留意訂閱方案。
+                  </p>
+                ) : !quotaBypass && deviceAlreadyUsedFree ? (
+                  <p className="text-primary">
+                    呢部瀏覽器／裝置已用過體驗額度。清除本站資料或換另一個瀏覽器檔案仍可能受其他限制。
+                  </p>
                 ) : !quotaBypass && ipAlreadyUsedFree ? (
-                  <p className="text-amber-200/90">
+                  <p className="text-primary">
                     呢個 IP 已用過體驗額度。聽日再試、換網絡，或聯絡我哋。
                   </p>
                 ) : !quotaBypass && freeGlobalRemaining !== null && freeGlobalLimit !== null ? (
-                  <div className="border-l-2 border-amber-400/40 pl-3">
-                    <p className="font-medium text-amber-200/90">額度說明</p>
+                  <div className="border-l-2 border-primary/35 pl-3">
+                    <p className="font-medium text-primary">額度說明</p>
                     <p className="mt-1 text-foreground-subtle">
-                      每個 IP 限做一次體驗分析。全站今日尚餘{" "}
-                      <span className="font-semibold tabular-nums text-amber-200/95">{freeGlobalRemaining}</span>
+                      每個帳戶、此瀏覽器設定同每個 IP 各限做一次體驗分析（VPN 唔會繞過帳戶限制）。全站今日尚餘{" "}
+                      <span className="font-semibold tabular-nums text-primary">{freeGlobalRemaining}</span>
                       ／{freeGlobalLimit} 個名額（先到先得）。
                     </p>
                   </div>
@@ -422,12 +591,12 @@ export function ScanForm() {
         </section>
       ) : loading ? (
         <section
-          className="rounded-2xl border border-white/10 bg-[#0b0c10] p-8 text-center sm:p-10"
+          className="rounded-2xl border border-outline-variant/20 bg-surface-container-low p-8 text-center sm:p-10"
           role="status"
           aria-live="polite"
           aria-busy="true"
         >
-          <p className="text-sm font-medium text-white">分析緊…</p>
+          <p className="text-sm font-medium text-on-surface">分析緊…</p>
           <p className="mt-2 text-xs text-foreground-muted">
             唔使關閉呢頁。多數{" "}
             <span className="text-foreground-muted/95">30–90 秒</span>
@@ -437,13 +606,13 @@ export function ScanForm() {
             {SCAN_LOADING_STEPS.map((step, i) => (
               <li
                 key={step.title}
-                className="flex gap-3 rounded-xl border border-white/[0.06] bg-black/25 px-3 py-2.5 text-foreground-muted"
+                className="flex gap-3 rounded-xl border border-outline-variant/12 bg-surface-container-lowest px-3 py-2.5 text-foreground-muted"
               >
-                <span className="shrink-0 pt-0.5 font-mono text-[11px] tabular-nums text-white/35">
+                <span className="shrink-0 pt-0.5 font-mono text-[11px] tabular-nums text-on-surface-variant">
                   {i + 1}
                 </span>
                 <span className="min-w-0">
-                  <span className="font-medium text-white/75">{step.title}</span>
+                  <span className="font-medium text-on-surface">{step.title}</span>
                   <span className="mt-0.5 block leading-relaxed text-foreground-subtle">
                     {step.detail}
                   </span>
@@ -452,17 +621,17 @@ export function ScanForm() {
             ))}
           </ul>
           <div
-            className="mx-auto mt-6 h-2 max-w-md overflow-hidden rounded-full bg-white/10"
+            className="mx-auto mt-6 h-2 max-w-md overflow-hidden rounded-full bg-surface-container-high"
             aria-hidden
           >
-            <div className="h-full w-[38%] rounded-full bg-gradient-to-r from-amber-500/40 via-amber-400 to-amber-500/40 crawlme-progress-indeterminate" />
+            <div className="h-full w-[38%] rounded-full bg-gradient-to-r from-primary/35 via-primary-container/50 to-primary/40 insights-progress-indeterminate" />
           </div>
         </section>
       ) : null}
 
       {error ? (
         <div
-          className="rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-100"
+          className="rounded-xl border border-error/30 bg-error-container/50 px-4 py-3 text-sm text-error"
           role="alert"
           aria-live="assertive"
           aria-atomic="true"
@@ -473,16 +642,20 @@ export function ScanForm() {
 
       {result?.upgrade ? (
         <div
-          className="rounded-xl border border-amber-400/35 bg-amber-400/10 px-4 py-4 text-sm text-amber-50"
+          className="rounded-xl border border-primary/25 bg-secondary-container/50 px-4 py-4 text-sm text-on-surface"
           role="status"
           aria-live="polite"
         >
           <p>
-            {result.ipFreeExhausted
-              ? "呢個 IP 已用過體驗額度。聽日再試、換網絡，或聯絡我哋。"
-              : result.globalQuotaExhausted
-                ? "今日全站體驗名額已滿，聽日再試。"
-                : "體驗額度用唔到。聽日再試，或聯絡我哋。"}
+            {result.userFreeExhausted
+              ? "此帳戶已用過體驗額度。換 VPN 亦唔會再開名額；聯絡我哋或留意訂閱方案。"
+              : result.deviceFreeExhausted
+                ? "呢部瀏覽器／裝置已用過體驗額度。聯絡我哋。"
+                : result.ipFreeExhausted
+                  ? "呢個 IP 已用過體驗額度。聽日再試、換網絡，或聯絡我哋。"
+                  : result.globalQuotaExhausted
+                    ? "今日全站體驗名額已滿，聽日再試。"
+                    : "體驗額度用唔到。聽日再試，或聯絡我哋。"}
           </p>
           <div className="mt-4 flex flex-wrap gap-2">
             <SocialSupportStrip />
@@ -500,7 +673,7 @@ export function ScanForm() {
                   : "已分析你貼嘅頁面。"}
               </p>
               {url.trim() ? (
-                <p className="break-all rounded-lg border border-white/[0.08] bg-black/35 px-3 py-2 font-mono text-[11px] leading-snug text-foreground-muted">
+                <p className="break-all rounded-lg border border-outline-variant/15 bg-surface-container-low px-3 py-2 font-mono text-[11px] leading-snug text-foreground-muted">
                   {withHttpsScheme(url)}
                 </p>
               ) : null}
@@ -508,31 +681,31 @@ export function ScanForm() {
             <button
               type="button"
               onClick={resetToNewScan}
-              className="crawlme-focus-ring shrink-0 rounded-xl border border-white/15 bg-white/[0.06] px-4 py-2 text-sm font-medium text-white transition hover:bg-white/10"
+              className="insights-focus-ring shrink-0 rounded-xl border border-outline-variant/20 bg-surface-container-high px-4 py-2 text-sm font-medium text-on-surface transition hover:bg-surface-container-high"
             >
               分析另一個網址
             </button>
           </div>
 
           <nav
-            className="-mx-1 flex flex-wrap items-center gap-1 rounded-xl border border-white/[0.08] bg-black/30 px-2 py-2 text-[11px] text-foreground-muted sm:text-xs"
+            className="-mx-1 flex flex-wrap items-center gap-1 rounded-xl border border-outline-variant/15 bg-surface-container-low px-2 py-2 text-[11px] text-foreground-muted sm:text-xs"
             aria-label="報告區塊"
           >
-            <span className="px-2 text-white/45">跳到：</span>
+            <span className="px-2 text-on-surface-variant">跳到：</span>
             {unified?.composite !== null ? (
               <>
                 <a
                   href="#report-scores"
-                  className="crawlme-focus-ring inline-flex min-h-[44px] items-center rounded-lg px-2 py-1 text-amber-200/90 hover:bg-white/[0.06] hover:text-amber-50"
+                  className="insights-focus-ring inline-flex min-h-[44px] items-center rounded-lg px-2 py-1 text-primary hover:bg-surface-container-high hover:text-on-surface"
                 >
                   總分
                 </a>
-                <span className="text-white/20">·</span>
+                <span className="text-outline-variant">·</span>
               </>
             ) : null}
             <a
               href="#report-audit"
-              className="crawlme-focus-ring inline-flex min-h-[44px] items-center rounded-lg px-2 py-1 text-amber-200/90 hover:bg-white/[0.06] hover:text-amber-50"
+              className="insights-focus-ring inline-flex min-h-[44px] items-center rounded-lg px-2 py-1 text-primary hover:bg-surface-container-high hover:text-on-surface"
             >
               營銷審計
             </a>
@@ -540,26 +713,26 @@ export function ScanForm() {
               (Array.isArray(result.competitor_facts) && result.competitor_facts.length > 0) ||
               result.competitor_discovery?.mode === "automatic") && (
               <>
-                <span className="text-white/20">·</span>
+                <span className="text-outline-variant">·</span>
                 <a
                   href="#report-competitors"
-                  className="crawlme-focus-ring inline-flex min-h-[44px] items-center rounded-lg px-2 py-1 text-amber-200/90 hover:bg-white/[0.06] hover:text-amber-50"
+                  className="insights-focus-ring inline-flex min-h-[44px] items-center rounded-lg px-2 py-1 text-primary hover:bg-surface-container-high hover:text-on-surface"
                 >
                   競爭對手
                 </a>
               </>
             )}
-            <span className="text-white/20">·</span>
+            <span className="text-outline-variant">·</span>
             <a
               href="#report-preview"
-              className="crawlme-focus-ring inline-flex min-h-[44px] items-center rounded-lg px-2 py-1 text-amber-200/90 hover:bg-white/[0.06] hover:text-amber-50"
+              className="insights-focus-ring inline-flex min-h-[44px] items-center rounded-lg px-2 py-1 text-primary hover:bg-surface-container-high hover:text-on-surface"
             >
               建議先睇
             </a>
-            <span className="text-white/20">·</span>
+            <span className="text-outline-variant">·</span>
             <a
               href="#report-full-actions"
-              className="crawlme-focus-ring inline-flex min-h-[44px] items-center rounded-lg px-2 py-1 text-amber-200/90 hover:bg-white/[0.06] hover:text-amber-50"
+              className="insights-focus-ring inline-flex min-h-[44px] items-center rounded-lg px-2 py-1 text-primary hover:bg-surface-container-high hover:text-on-surface"
             >
               完整清單
             </a>
@@ -570,7 +743,7 @@ export function ScanForm() {
               {unified?.composite !== null ? (
                 <div
                   id="report-scores"
-                  className="scroll-mt-24 rounded-2xl border border-white/10 border-l-2 border-l-emerald-500/40 bg-[#0b0c10] p-6"
+                  className="scroll-mt-24 rounded-2xl border border-outline-variant/20 border-l-2 border-l-tertiary/50 bg-surface-container-low p-6"
                 >
                   <UnifiedScorePanel
                     pagespeedInsights={result.pagespeed_insights}
@@ -580,9 +753,9 @@ export function ScanForm() {
               ) : null}
               <div
                 id="report-audit"
-                className="scroll-mt-24 rounded-2xl border border-white/10 bg-[#0b0c10] p-6"
+                className="scroll-mt-24 rounded-2xl border border-outline-variant/20 bg-surface-container-low p-6"
               >
-                <h2 className="text-lg font-semibold tracking-tight text-white">營銷審計</h2>
+                <h2 className="text-lg font-semibold tracking-tight text-on-surface">營銷審計</h2>
                 <p className="mt-1 text-[11px] leading-relaxed text-foreground-subtle">
                   呢度係按頁面內容、結構、搜尋可見度同技術表現嘅逐項檢視（以今次快照為準）。
                 </p>
@@ -601,9 +774,9 @@ export function ScanForm() {
               result.competitor_discovery?.mode === "automatic" ? (
                 <div
                   id="report-competitors"
-                  className="scroll-mt-24 rounded-2xl border border-white/10 bg-[#0b0c10] p-6"
+                  className="scroll-mt-24 rounded-2xl border border-outline-variant/20 bg-surface-container-low p-6"
                 >
-                  <h2 className="text-lg font-semibold tracking-tight text-white">
+                  <h2 className="text-lg font-semibold tracking-tight text-on-surface">
                     你嘅競爭對手
                   </h2>
                   {result.competitor_discovery?.mode === "user" ? (
@@ -621,33 +794,33 @@ export function ScanForm() {
           <div className="mt-6 flex flex-col gap-6">
             <div
               id="report-preview"
-              className="scroll-mt-24 rounded-2xl border border-white/10 bg-[#0b0c10] p-6"
+              className="scroll-mt-24 rounded-2xl border border-outline-variant/20 bg-surface-container-low p-6"
             >
-              <h2 className="text-lg font-semibold tracking-tight text-white">建議先睇</h2>
+              <h2 className="text-lg font-semibold tracking-tight text-on-surface">建議先睇</h2>
               <PriorityFindingsPreview data={result.seo_scan} />
               {(result.preview_actions ?? []).length === 0 ? (
                 <p className="mt-4 text-sm text-foreground-muted">
                   呢度暫時冇獨立預覽項目。請睇上面「營銷審計」，或展開下面「完整行動清單」。
                 </p>
               ) : null}
-              <ul className="mt-4 grid gap-3 text-sm text-white/75 lg:grid-cols-2 lg:gap-4">
+              <ul className="mt-4 grid gap-3 text-sm text-on-surface lg:grid-cols-2 lg:gap-4">
                 {(result.preview_actions ?? []).map((a, i) => {
                   const imp = typeof a.impact === "string" ? a.impact.toLowerCase() : "";
                   const impactClass =
                     imp === "high"
-                      ? "bg-red-500/15 text-red-100 ring-1 ring-red-400/25"
+                      ? "bg-red-500/15 text-error ring-1 ring-red-400/25"
                       : imp === "medium"
-                        ? "bg-amber-400/12 text-amber-100 ring-1 ring-amber-400/20"
+                        ? "bg-secondary-container/80 text-primary ring-1 ring-primary/25"
                         : imp === "low"
-                          ? "bg-white/[0.06] text-foreground-muted ring-1 ring-white/10"
+                          ? "bg-surface-container-high text-foreground-muted ring-1 ring-outline-variant/25"
                           : "";
                   return (
                     <li
                       key={i}
-                      className="rounded-xl border border-white/[0.07] bg-black/25 px-4 py-3"
+                      className="rounded-xl border border-outline-variant/15 bg-surface-container-lowest px-4 py-3"
                     >
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="font-medium text-white">{a.title ?? "行動"}</span>
+                        <span className="font-medium text-on-surface">{a.title ?? "行動"}</span>
                         {imp ? (
                           <span
                             className={`rounded-md px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${impactClass}`}
@@ -668,17 +841,17 @@ export function ScanForm() {
 
             <div
               id="report-full-actions"
-              className="scroll-mt-24 rounded-2xl border border-white/10 bg-[#0b0c10]"
+              className="scroll-mt-24 rounded-2xl border border-outline-variant/20 bg-surface-container-low"
             >
               <details className="group">
-                <summary className="crawlme-focus-ring flex cursor-pointer list-none items-center justify-between gap-3 p-6 [&::-webkit-details-marker]:hidden">
-                  <h2 className="text-lg font-semibold tracking-tight text-white">完整行動清單</h2>
-                  <span className="shrink-0 text-xs text-foreground-muted transition group-open:text-amber-200/90">
+                <summary className="insights-focus-ring flex cursor-pointer list-none items-center justify-between gap-3 p-6 [&::-webkit-details-marker]:hidden">
+                  <h2 className="text-lg font-semibold tracking-tight text-on-surface">完整行動清單</h2>
+                  <span className="shrink-0 text-xs text-foreground-muted transition group-open:text-primary">
                     <span className="group-open:hidden">展開</span>
                     <span className="hidden group-open:inline">收埋</span>
                   </span>
                 </summary>
-                <div className="border-t border-white/[0.08] px-6 pb-6 pt-2">
+                <div className="border-t border-outline-variant/15 px-6 pb-6 pt-2">
                   <FullActionsPanel data={result.full_actions} />
                 </div>
               </details>

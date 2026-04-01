@@ -1,7 +1,7 @@
 {
 	"$schema": "node_modules/wrangler/config-schema.json",
 	"main": ".open-next/worker.js",
-	"name": "crawlme",
+	"name": "insights",
 	"compatibility_date": "2026-03-29",
 	"observability": {
 		"enabled": true
@@ -19,7 +19,7 @@
 			// Self-reference service binding, the service name must match the worker name
 			// see https://opennext.js.org/cloudflare/caching
 			"binding": "WORKER_SELF_REFERENCE",
-			"service": "crawlme"
+			"service": "insights"
 		}
 	],
 	"r2_buckets": [
@@ -30,7 +30,7 @@
 			// Create the bucket before deploying
 			// You can change the bucket name if you want
 			// See https://developers.cloudflare.com/workers/wrangler/commands/#r2-bucket-create
-			"bucket_name": "crawlme-opennext-cache"
+			"bucket_name": "insights-opennext-cache"
 		}
 	],
 	"images": {
@@ -40,8 +40,8 @@
 	},
 	"kv_namespaces": [
 		{
-			"binding": "CRAWLME_KV",
-			// Replace with your namespace id from: wrangler kv namespace create CRAWLME_KV
+			"binding": "INSIGHTS_KV",
+			// Replace with your namespace id from: wrangler kv namespace create INSIGHTS_KV
 			"id": "a45d4bd1cf9c4e8abaef49c6202df287"
 		}
 	]

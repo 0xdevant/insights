@@ -1,4 +1,4 @@
-/** Production URL for CrawlMe (Clawify). */
+/** Production URL for Insights (Clawify). */
 export const SITE_URL = "https://seo.clawify.dev";
 
 /** Clawify product / company site — header attribution. */

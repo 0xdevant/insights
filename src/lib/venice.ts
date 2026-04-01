@@ -16,56 +16,6 @@ export function resolveVeniceModel(): string {
   return getEnv("VENICE_MODEL") ?? DEFAULT_VENICE_MODEL;
 }
 
-/**
- * Ceiling for a single completion (`max_tokens`). Venice defaults to 16384, but large
- * `json_object` scans can need more — **only raising VENICE_CONTEXT_WINDOW_TOKENS is not
- * enough** if this ceiling stays at 16384: `Math.min(16384, room)` caps output anyway.
- */
-function maxCompletionCeiling(): number {
-  const raw = getEnv("VENICE_MAX_COMPLETION_TOKENS");
-  if (!raw) return 32768;
-  const n = Number.parseInt(raw.trim(), 10);
-  if (Number.isFinite(n) && n >= 1024 && n <= 131072) return n;
-  return 32768;
-}
-
-const CONTEXT_SAFETY_MARGIN = 256;
-/**
- * Floor for `max_tokens`. Too low → the model stops mid-JSON and strings look "trimmed"
- * (e.g. strengths ending with「及」). Large structured `json_object` replies need a few k tokens.
- */
-const MIN_COMPLETION_TOKENS = 2048;
-
-function estimatePromptTokens(messages: Array<{ content: string }>): number {
-  const chars = messages.reduce((s, m) => s + (m.content?.length ?? 0), 0);
-  // `chars/1.5` underestimates CJK-heavy prompts (often ~1 token/char) → we think there is
-  // more "room" for max_tokens than the real context allows → Venice can return 200 with
-  // empty `message.content` (prod: big HTML → big PAGE_FACTS). Use a stricter divisor.
-  return Math.ceil(chars / 1.15);
-}
-
-function defaultContextWindowTokens(): number {
-  const raw = getEnv("VENICE_CONTEXT_WINDOW_TOKENS");
-  if (!raw) return 32768;
-  const n = Number.parseInt(raw, 10);
-  return Number.isFinite(n) && n >= 8192 ? n : 32768;
-}
-
-/** Safe max completion size for the given messages (Venice 32k-style window). */
-export function clampVeniceMaxCompletionTokens(
-  messages: Array<{ content: string }>,
-  contextWindowTokens?: number,
-): number {
-  const window = contextWindowTokens ?? defaultContextWindowTokens();
-  const estIn = estimatePromptTokens(messages);
-  const room = window - estIn - CONTEXT_SAFETY_MARGIN;
-  const cap = Math.min(
-    maxCompletionCeiling(),
-    Math.max(MIN_COMPLETION_TOKENS, room),
-  );
-  return cap;
-}
-
 export type VeniceUsage = {
   promptTokens?: number;
   completionTokens?: number;
@@ -125,20 +75,14 @@ export async function veniceChatJson(params: {
   model: string;
   messages: Array<{ role: "system" | "user" | "assistant"; content: string }>;
   veniceParameters?: Record<string, unknown>;
-  /** Hard cap on completion tokens; still clamped to fit context window. */
+  /**
+   * Optional completion cap. If omitted, Venice uses the model default (see API:
+   * `max_tokens` ≤ 0 is ignored in favor of the model maximum).
+   */
   maxCompletionTokens?: number;
-  /** Model context length for cap math (default 32768, or VENICE_CONTEXT_WINDOW_TOKENS). */
-  contextWindowTokens?: number;
   /** Override `VENICE_FETCH_TIMEOUT_MS` / default 180s. */
   fetchTimeoutMs?: number;
 }): Promise<{ text: string; usage: VeniceUsage }> {
-  const ctx = params.contextWindowTokens ?? defaultContextWindowTokens();
-  const safeCap = clampVeniceMaxCompletionTokens(params.messages, ctx);
-  const maxTokens =
-    params.maxCompletionTokens !== undefined
-      ? Math.min(params.maxCompletionTokens, safeCap)
-      : safeCap;
-
   const timeoutMs =
     params.fetchTimeoutMs ??
     parseTimeoutMs(
@@ -148,6 +92,17 @@ export async function veniceChatJson(params: {
 
   const modelId = params.model?.trim() || DEFAULT_VENICE_MODEL;
 
+  const payload: Record<string, unknown> = {
+    model: modelId,
+    messages: params.messages,
+    response_format: { type: "json_object" },
+    temperature: 0.2,
+    ...(params.veniceParameters ? { venice_parameters: params.veniceParameters } : {}),
+  };
+  if (params.maxCompletionTokens !== undefined && params.maxCompletionTokens > 0) {
+    payload.max_completion_tokens = params.maxCompletionTokens;
+  }
+
   let res: Response;
   try {
     res = await fetch(`${VENICE_BASE}/chat/completions`, {
@@ -156,16 +111,7 @@ export async function veniceChatJson(params: {
         authorization: `Bearer ${params.apiKey}`,
         "content-type": "application/json",
       },
-      body: JSON.stringify({
-        model: modelId,
-        messages: params.messages,
-        max_tokens: maxTokens,
-        response_format: { type: "json_object" },
-        temperature: 0.2,
-        ...(params.veniceParameters
-          ? { venice_parameters: params.veniceParameters }
-          : {}),
-      }),
+      body: JSON.stringify(payload),
       signal: AbortSignal.timeout(timeoutMs),
     });
   } catch (e) {
@@ -209,7 +155,7 @@ export async function veniceChatJson(params: {
         requestModel: modelId,
         responseModel: model,
         finish_reason: fr,
-        maxTokens,
+        maxCompletionTokens: params.maxCompletionTokens ?? null,
         estPromptChars,
         prompt_tokens: data.usage?.prompt_tokens ?? null,
         completion_tokens: data.usage?.completion_tokens ?? null,
@@ -219,12 +165,12 @@ export async function veniceChatJson(params: {
     );
     const hint =
       fr === "length"
-        ? "（可能觸發輸出長度上限 — 可縮短 prompt、或設 VENICE_CONTEXT_WINDOW_TOKENS 更大若模型支援）"
+        ? "（可能觸發輸出長度上限 — 可縮短 prompt、或換模型）"
         : fr === "content_filter" || fr === "safety"
           ? "（內容被過濾）"
           : "";
     throw new Error(
-      `Venice returned empty content（model=${model} finish_reason=${fr}${hint}）。如 prod 頁面較大，試用較細 URL 或加大上下文設定。`,
+      `Venice returned empty content（model=${model} finish_reason=${fr}${hint}）。如 prod 頁面較大，試用較細 URL 或換模型。`,
     );
   }
 

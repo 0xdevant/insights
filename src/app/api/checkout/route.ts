@@ -6,7 +6,7 @@ import { SITE_URL } from "@/lib/site";
 
 const PAYMENT_UNIT_AMOUNT_CENTS = 1800;
 const PAYMENT_CURRENCY = "usd";
-const PRODUCT_NAME = "CrawlMe Pro";
+const PRODUCT_NAME = "Insights Pro";
 
 function stripeConfigError(): string | null {
   if (!getEnv("STRIPE_SECRET_KEY")?.trim()) {

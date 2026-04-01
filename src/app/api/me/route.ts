@@ -1,10 +1,14 @@
+import { auth } from "@clerk/nextjs/server";
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import {
   getFreeGlobalDailyLimit,
   getGlobalFreeScanRemaining,
+  isDeviceFreeScanUsed,
   isIpFreeScanUsed,
   isQuotaBypassIp,
+  isUserFreeScanUsed,
 } from "@/lib/quota";
 import { getClientIp } from "@/lib/request-ip";
 import {
@@ -13,14 +17,19 @@ import {
 } from "@/lib/subscription";
 
 export async function GET(request: NextRequest) {
+  const { userId } = await auth();
   const cookieStore = await cookies();
-  const customerId = cookieStore.get("crawlme_customer")?.value;
+  const customerId = cookieStore.get("insights_customer")?.value;
   const sub = await getSubscriptionForCustomer(customerId);
   const paid = isActiveSubscription(sub);
 
   const ip = getClientIp(request);
   const bypass = isQuotaBypassIp(ip);
   const globalLimit = getFreeGlobalDailyLimit();
+
+  const deviceParam = request.nextUrl.searchParams.get("deviceId")?.trim();
+  const validDevice =
+    deviceParam && z.string().uuid().safeParse(deviceParam).success ? deviceParam : null;
 
   if (paid) {
     return NextResponse.json({ paid: true });
@@ -36,6 +45,14 @@ export async function GET(request: NextRequest) {
     });
   }
 
+  let userAlreadyUsedFree = false;
+  if (userId) {
+    userAlreadyUsedFree = await isUserFreeScanUsed(userId);
+  }
+  let deviceAlreadyUsedFree = false;
+  if (validDevice) {
+    deviceAlreadyUsedFree = await isDeviceFreeScanUsed(validDevice);
+  }
   const ipAlreadyUsedFree = await isIpFreeScanUsed(ip);
   const freeGlobalRemaining = await getGlobalFreeScanRemaining(globalLimit);
 
@@ -43,6 +60,8 @@ export async function GET(request: NextRequest) {
     paid: false,
     quotaBypass: false,
     ipAlreadyUsedFree,
+    userAlreadyUsedFree,
+    deviceAlreadyUsedFree,
     freeGlobalRemaining,
     freeGlobalLimit: globalLimit,
   });

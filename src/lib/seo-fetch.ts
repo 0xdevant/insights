@@ -71,7 +71,7 @@ export async function fetchPageHtml(targetUrl: string): Promise<FetchPageResult>
         redirect: "manual",
         signal: controller.signal,
         headers: {
-          "user-agent": `CrawlMeBot/1.0 (+${SITE_URL})`,
+          "user-agent": `InsightsBot/1.0 (+${SITE_URL})`,
           accept: "text/html,application/xhtml+xml;q=0.9,*/*;q=0.8",
         },
       });

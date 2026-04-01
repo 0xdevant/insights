@@ -2,7 +2,7 @@ import { getEnv } from "@/lib/env";
 
 /** Extra same-origin pages to fetch (primary is always fetched first). */
 export function getMaxExtraSitePages(paid: boolean): number {
-  const raw = getEnv("CRAWLME_EXTRA_SITE_PAGES")?.trim();
+  const raw = getEnv("INSIGHTS_EXTRA_SITE_PAGES")?.trim();
   if (raw) {
     const n = parseInt(raw, 10);
     if (Number.isFinite(n) && n >= 0 && n <= 12) return n;

@@ -27,10 +27,10 @@ export type CompetitorDiscoveryResult = {
 
 /**
  * How to pick competitor URLs when the user did not provide any.
- * If `CRAWLME_COMPETITOR_DISCOVERY` is unset: **Tavily** if `TAVILY_API_KEY`, else Brave if `BRAVE_SEARCH_API_KEY`, else Venice model.
+ * If `INSIGHTS_COMPETITOR_DISCOVERY` is unset: **Tavily** if `TAVILY_API_KEY`, else Brave if `BRAVE_SEARCH_API_KEY`, else Venice model.
  */
 export function resolveCompetitorDiscoveryStrategy(): "model" | "brave" | "tavily" | "none" {
-  const raw = getEnv("CRAWLME_COMPETITOR_DISCOVERY")?.trim().toLowerCase();
+  const raw = getEnv("INSIGHTS_COMPETITOR_DISCOVERY")?.trim().toLowerCase();
   if (raw === "tavily") return "tavily";
   if (raw === "brave" || raw === "search") return "brave";
   if (raw === "model" || raw === "venice") return "model";

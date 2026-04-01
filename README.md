@@ -1,4 +1,4 @@
-# CrawlMe
+# Insights
 
 Next.js app deployed to **Cloudflare Workers** with [`@opennextjs/cloudflare`](https://opennext.js.org/cloudflare).
 

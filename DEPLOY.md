@@ -1,6 +1,10 @@
 # Production deploy (Cloudflare Workers + OpenNext)
 
-CrawlMe runs on **Cloudflare Workers** via [`@opennextjs/cloudflare`](https://opennext.js.org/cloudflare). This file lists what you must do once; CI deploys on every push to `main` when GitHub secrets are set.
+Insights runs on **Cloudflare Workers** via [`@opennextjs/cloudflare`](https://opennext.js.org/cloudflare). This file lists what you must do once; CI deploys on every push to `main` when GitHub secrets are set.
+
+### Migrating from the old `crawlme` worker name
+
+Deploying with `wrangler.jsonc` `name: "insights"` creates or updates a Worker named **insights**, not **crawlme**. After the first deploy: attach your **custom domain** to **insights** (and remove it from the old worker if you no longer need it), copy **Variables and Secrets** from the old Worker, and ensure **R2** bucket `insights-opennext-cache` exists (or change `bucket_name` back to your existing bucket if you prefer not to create a new one). KV **namespace id** in `wrangler.jsonc` can stay the same; only the **binding** name in code is `INSIGHTS_KV`.
 
 ## 1. One-time: Cloudflare resources
 
@@ -9,7 +13,7 @@ Run locally (after `npx wrangler login`) or use the dashboard.
 ### KV (required for quotas / subscription keys in production)
 
 ```bash
-npx wrangler kv namespace create CRAWLME_KV
+npx wrangler kv namespace create INSIGHTS_KV
 ```
 
 Copy the **id** into `wrangler.jsonc` → `kv_namespaces[0].id`, **or** add it as GitHub secret `CLOUDFLARE_KV_NAMESPACE_ID` (workflow replaces the placeholder `0000…`).
@@ -17,7 +21,7 @@ Copy the **id** into `wrangler.jsonc` → `kv_namespaces[0].id`, **or** add it a
 ### R2 (OpenNext incremental cache)
 
 ```bash
-npx wrangler r2 bucket create crawlme-opennext-cache
+npx wrangler r2 bucket create insights-opennext-cache
 ```
 
 Name must match `wrangler.jsonc` → `r2_buckets[0].bucket_name`.
@@ -35,7 +39,7 @@ Or use a template that includes **Cloudflare Workers** deploy permissions.
 
 ## 2. GitHub repository secrets
 
-In [github.com/0xdevant/crawlme](https://github.com/0xdevant/crawlme) → **Settings** → **Secrets and variables** → **Actions** → **New repository secret**:
+In your GitHub repo → **Settings** → **Secrets and variables** → **Actions** → **New repository secret**:
 
 | Secret                           | Purpose                                                       |
 | -------------------------------- | ------------------------------------------------------------- |
@@ -49,13 +53,13 @@ After secrets are set, every push to `main` runs `.github/workflows/deploy.yml`.
 
 ## 3. Worker secrets & vars (runtime)
 
-`VENICE_API_KEY`, **`CLERK_SECRET_KEY`** (required for auth middleware — use `sk_live_…` for production), `STRIPE_*`, `TURNSTILE_SECRET_KEY`, `FREE_GLOBAL_DAILY_SCANS`, `CRAWLME_QUOTA_BYPASS_IPS`, etc. are read at **runtime** on the Worker.
+`VENICE_API_KEY`, **`CLERK_SECRET_KEY`** (required for auth middleware — use `sk_live_…` for production), `STRIPE_*`, `TURNSTILE_SECRET_KEY`, `FREE_GLOBAL_DAILY_SCANS`, `INSIGHTS_QUOTA_BYPASS_IPS`, etc. are read at **runtime** on the Worker.
 
 **Clerk:** Set both **GitHub** `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` (build) and **Worker** `CLERK_SECRET_KEY` (runtime). Missing either often causes **Internal Server Error** on every page (middleware runs on all routes).
 
 **Turnstile:** Use **two** different keys: **`NEXT_PUBLIC_TURNSTILE_SITE_KEY`** in **GitHub Actions** (same value as Turnstile “Site Key” in the dashboard — public) and **`TURNSTILE_SECRET_KEY`** only on the **Worker** (secret key). If the Worker has the secret but GitHub never received the **public** site key, users can see「請先完成人機驗證」with **no visible widget** — add the GitHub secret and redeploy.
 
-Set them in **Workers & Pages** → **crawlme** → **Settings** → **Variables and Secrets**, or:
+Set them in **Workers & Pages** → **insights** → **Settings** → **Variables and Secrets**, or:
 
 ```bash
 npx wrangler secret put VENICE_API_KEY
@@ -66,7 +70,7 @@ Use the same names as `.env.example`. Do **not** commit real values.
 
 ## 4. Domain & URLs
 
-1. **Workers** → **crawlme** → **Custom domains** → add `seo.clawify.dev` (or your hostname).
+1. **Workers** → **insights** → **Custom domains** → add `seo.clawify.dev` (or your hostname).
 2. Set **`NEXT_PUBLIC_APP_URL`** (and production env) to that URL for checkout redirects.
 3. **Stripe** Dashboard → webhook endpoint: `https://<your-domain>/api/webhooks/stripe`.
 
@@ -87,9 +91,9 @@ If deploy fails on **KV id**, fix the id in `wrangler.jsonc` or set `CLOUDFLARE_
 
 - **Align secrets:** Worker **Variables and Secrets** should use the same **`VENICE_API_KEY`** and **`VENICE_MODEL`** as your working `.env` / `.env.local`. An **empty or placeholder `VENICE_MODEL`** in the dashboard used to send `model: ""` to the API (now guarded — still fix the value).
 - **Larger pages in prod:** Real URLs can produce a bigger `PAGE_FACTS` JSON than your local test URL → harder completion; try fewer extra pages or a model with a larger context.
-- **`finish_reason=length` / empty reply:** The model ran out of **output** budget. Raising **`VENICE_CONTEXT_WINDOW_TOKENS`** alone is **not enough** if **`max_tokens`** was still capped at **16384** by the app — set **`VENICE_MAX_COMPLETION_TOKENS`** (e.g. `32768`) and a matching or larger context window; the app default is now **32768** for the completion ceiling. Large `PAGE_FACTS` also steals room — prompts **slim headers** in code. Search logs for **`[venice_empty]`**.
+- **`finish_reason=length` / empty reply:** The model ran out of **output** budget, or prompt + context left no room — try a smaller URL, fewer extra pages, or a different **`VENICE_MODEL`**. Search logs for **`[venice_empty]`**.
 
 ### Internal Server Error (500) on `GET /`
 
 1. **Clerk:** Confirm `CLERK_SECRET_KEY` is set on the Worker and `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` is in GitHub Actions secrets (redeploy after adding). Keys must be from the **same** Clerk production instance.
-2. **Cloudflare Workers** → **crawlme** → **Logs** → look for the thrown message (often Clerk or missing env).
+2. **Cloudflare Workers** → **insights** → **Logs** → look for the thrown message (often Clerk or missing env).

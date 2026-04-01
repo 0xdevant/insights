@@ -5,7 +5,7 @@ interface KVNamespace {
 
 declare namespace Cloudflare {
   interface Env {
-    CRAWLME_KV: KVNamespace;
+    INSIGHTS_KV: KVNamespace;
   }
 }
 

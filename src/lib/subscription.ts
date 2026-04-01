@@ -10,7 +10,7 @@ export type SubscriptionRecord = {
 async function getKv(): Promise<KVNamespace | null> {
   try {
     const { env } = getCloudflareContext();
-    const kv = (env as { CRAWLME_KV?: KVNamespace }).CRAWLME_KV;
+    const kv = (env as { INSIGHTS_KV?: KVNamespace }).INSIGHTS_KV;
     return kv ?? null;
   } catch {
     return null;

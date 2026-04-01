@@ -2,9 +2,8 @@
 
 import { SignInButton, SignUpButton, UserButton, useAuth } from "@clerk/nextjs";
 
-/** High-contrast controls for dark header: 登入 = readable ghost, 註冊 = solid amber. */
 const btnBase =
-  "inline-flex min-h-[44px] min-w-[5.75rem] items-center justify-center rounded-lg px-4 text-sm font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-400/80";
+  "inline-flex min-h-[44px] min-w-[5.75rem] items-center justify-center rounded-xl px-4 text-sm font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary/50";
 
 export function AuthHeader() {
   const { isSignedIn, isLoaded } = useAuth();
@@ -12,7 +11,7 @@ export function AuthHeader() {
   if (!isLoaded) {
     return (
       <div
-        className="h-11 w-[11rem] animate-pulse rounded-xl bg-white/[0.06]"
+        className="h-11 w-[11rem] animate-pulse rounded-xl bg-surface-container-low"
         aria-busy="true"
         aria-label="載入帳戶狀態"
       />
@@ -24,8 +23,9 @@ export function AuthHeader() {
       <UserButton
         appearance={{
           elements: {
-            avatarBox: "h-10 w-10 ring-2 ring-white/10",
-            userButtonPopoverCard: "border border-white/10 bg-[#0c0d12] shadow-xl",
+            avatarBox: "h-10 w-10 ring-2 ring-outline-variant/20",
+            userButtonPopoverCard:
+              "border border-outline-variant/20 bg-surface-container-lowest shadow-ambient",
           },
         }}
       />
@@ -34,14 +34,14 @@ export function AuthHeader() {
 
   return (
     <div
-      className="inline-flex items-center gap-1 rounded-xl border border-white/15 bg-zinc-950/80 p-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_1px_0_rgba(0,0,0,0.4)]"
+      className="inline-flex items-center gap-1 rounded-xl border border-outline-variant/25 bg-surface-container-low/50 p-1"
       role="navigation"
       aria-label="帳戶"
     >
       <SignInButton mode="modal">
         <button
           type="button"
-          className={`${btnBase} text-zinc-100 ring-1 ring-white/10 ring-inset hover:bg-white/12 hover:text-white hover:ring-white/20`}
+          className={`${btnBase} text-secondary hover:bg-surface-container-high`}
         >
           登入
         </button>
@@ -49,7 +49,7 @@ export function AuthHeader() {
       <SignUpButton mode="modal">
         <button
           type="button"
-          className={`${btnBase} bg-amber-400 font-semibold text-zinc-950 shadow-[0_0_0_1px_rgba(251,191,36,0.35),0_1px_2px_rgba(0,0,0,0.35)] hover:bg-amber-300 hover:text-zinc-950`}
+          className={`${btnBase} bg-gradient-to-b from-primary to-primary-container font-semibold text-on-primary shadow-sm hover:opacity-95`}
         >
           註冊
         </button>

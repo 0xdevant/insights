@@ -7,9 +7,13 @@ import {
   checkAndConsumeGlobalFreeScanQuota,
   getFreeGlobalDailyLimit,
   getGlobalFreeScanRemaining,
+  isDeviceFreeScanUsed,
   isIpFreeScanUsed,
   isQuotaBypassIp,
+  isUserFreeScanUsed,
+  markDeviceFreeScanUsed,
   markIpFreeScanUsed,
+  markUserFreeScanUsed,
   refundGlobalFreeScanQuota,
 } from "@/lib/quota";
 import { extractSeoFacts, type SeoFacts } from "@/lib/seo-extract";
@@ -48,6 +52,8 @@ export const maxDuration = 300;
 const bodySchema = z.object({
   url: z.string().min(4).max(2048),
   turnstileToken: z.string().min(1).optional(),
+  /** Browser `localStorage` UUID — free tier also keyed to this profile (not only IP). */
+  deviceId: z.string().max(36).optional(),
   /** Optional public URLs of competitor pages to compare (on-page snapshot only). */
   competitorUrls: z
     .array(z.string().min(4).max(2048))
@@ -75,6 +81,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "請求內容無效" }, { status: 400 });
     }
 
+    const rawDevice = parsed.data.deviceId?.trim();
+    const validDeviceId =
+      rawDevice && z.string().uuid().safeParse(rawDevice).success ? rawDevice : undefined;
+
     const ip = getClientIp(request);
     if (turnstileSecret) {
       const token = parsed.data.turnstileToken;
@@ -98,7 +108,7 @@ export async function POST(request: NextRequest) {
     }
 
     const cookieStore = await cookies();
-    const customerId = cookieStore.get("crawlme_customer")?.value;
+    const customerId = cookieStore.get("insights_customer")?.value;
     const sub = await getSubscriptionForCustomer(customerId);
     /** Stripe subscription only — not used to gate report richness (honour unlock removed). */
     const isSubscriber = isActiveSubscription(sub);
@@ -110,6 +120,18 @@ export async function POST(request: NextRequest) {
     let consumedGlobal = false;
 
     if (!isSubscriber && !bypass) {
+      if (await isUserFreeScanUsed(userId)) {
+        return NextResponse.json(
+          {
+            error:
+              "此帳戶已使用過體驗額度內嘅分析。聯絡我哋或留意訂閱方案。",
+            upgrade: true,
+            userFreeExhausted: true,
+          },
+          { status: 429 },
+        );
+      }
+
       if (await isIpFreeScanUsed(ip)) {
         return NextResponse.json(
           {
@@ -117,6 +139,18 @@ export async function POST(request: NextRequest) {
               "此 IP 已使用過體驗額度內嘅分析。聽日再試、換網絡，或聯絡我哋。",
             upgrade: true,
             ipFreeExhausted: true,
+          },
+          { status: 429 },
+        );
+      }
+
+      if (validDeviceId && (await isDeviceFreeScanUsed(validDeviceId))) {
+        return NextResponse.json(
+          {
+            error:
+              "呢部裝置／瀏覽器已使用過體驗額度內嘅分析。聯絡我哋。",
+            upgrade: true,
+            deviceFreeExhausted: true,
           },
           { status: 429 },
         );
@@ -342,7 +376,9 @@ export async function POST(request: NextRequest) {
     }
 
     if (!isSubscriber && !bypass) {
+      await markUserFreeScanUsed(userId);
       await markIpFreeScanUsed(ip);
+      if (validDeviceId) await markDeviceFreeScanUsed(validDeviceId);
     }
 
     let seoScanPayload =

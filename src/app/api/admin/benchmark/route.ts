@@ -12,7 +12,7 @@ const bodySchema = z.object({
 });
 
 export async function POST(request: NextRequest) {
-  const adminSecret = getEnv("CRAWLME_ADMIN_SECRET");
+  const adminSecret = getEnv("INSIGHTS_ADMIN_SECRET");
   if (!adminSecret) {
     return NextResponse.json({ error: "Admin benchmarking disabled" }, { status: 403 });
   }

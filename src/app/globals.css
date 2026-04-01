@@ -2,19 +2,43 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Stitch-inspired light theme + Insights */
 :root {
-  --background: #07080b;
-  --foreground: #f4f4f5;
-  /* ~WCAG AA vs --background for normal text (use for body-secondary / disclaimers) */
-  --foreground-muted: #c4c4cc;
-  --foreground-subtle: #a8a8b3;
-  --ring-focus: rgba(251, 191, 36, 0.72);
+  --background: #f7f9fb;
+  --surface: #f7f9fb;
+  --surface-container-low: #f2f4f6;
+  --surface-container-lowest: #ffffff;
+  --surface-container-high: #e6e8ea;
+  --on-surface: #191c1e;
+  --on-surface-variant: #434654;
+  --secondary: #525f71;
+  --primary: #003d9b;
+  --primary-container: #0052cc;
+  --on-primary: #ffffff;
+  --secondary-container: #d3e1f6;
+  --outline-variant: #c3c6d6;
+  --tertiary: #004e33;
+  --tertiary-fixed: #6ffbbe;
+  --tertiary-container: #006846;
+  --error: #ba1a1a;
+  --error-container: #ffdad6;
+  --inverse-surface: #2d3133;
+  --inverse-on-surface: #eff1f3;
+  --foreground: var(--on-surface);
+  --foreground-muted: var(--secondary);
+  --foreground-subtle: var(--on-surface-variant);
+  --ring-focus: rgba(0, 61, 155, 0.45);
 }
 
 body {
   color: var(--foreground);
   background: var(--background);
-  font-family: var(--font-noto-tc), var(--font-dm-sans), "PingFang HK", "Microsoft JhengHei", system-ui, sans-serif;
+  font-family: var(--font-noto-tc), var(--font-manrope), "PingFang HK", "Microsoft JhengHei", system-ui,
+    sans-serif;
+}
+
+.font-headline {
+  font-family: var(--font-manrope), var(--font-noto-tc), system-ui, sans-serif;
 }
 
 @media (prefers-reduced-motion: no-preference) {
@@ -33,7 +57,7 @@ body {
   }
 }
 
-@keyframes crawlme-progress-indeterminate {
+@keyframes insights-progress-indeterminate {
   0% {
     transform: translateX(-100%);
   }
@@ -42,8 +66,8 @@ body {
   }
 }
 
-.crawlme-progress-indeterminate {
-  animation: crawlme-progress-indeterminate 1.35s ease-in-out infinite;
+.insights-progress-indeterminate {
+  animation: insights-progress-indeterminate 1.35s ease-in-out infinite;
 }
 
 .font-mono {
@@ -51,13 +75,11 @@ body {
     "Courier New", monospace;
 }
 
-/** Keyboard focus ring — pair with interactive links/buttons (see AuthHeader). */
-.crawlme-focus-ring:focus-visible {
+.insights-focus-ring:focus-visible {
   outline: 2px solid var(--ring-focus);
   outline-offset: 2px;
 }
 
-/** First focusable control: skip past sticky header to #main-content */
 .skip-link {
   position: absolute;
   width: 1px;
@@ -86,8 +108,8 @@ body {
   white-space: normal;
   padding: 0.5rem 1rem;
   border-radius: 0.5rem;
-  background: #fbbf24;
-  color: #18181b;
+  background: var(--primary);
+  color: var(--on-primary);
   font-size: 0.875rem;
   font-weight: 600;
   outline: 2px solid var(--ring-focus);
