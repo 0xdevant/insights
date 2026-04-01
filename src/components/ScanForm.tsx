@@ -12,7 +12,6 @@ import {
   useState,
   type FormEvent,
 } from "react";
-import { QuotaTrialSubtleNote } from "@/components/QuotaBanner";
 import { PreviewActionImplementationSteps } from "@/components/ScanResultBlocks";
 import { computeUnifiedScore } from "@/lib/report-score";
 import {
@@ -345,6 +344,7 @@ export function ScanForm() {
   }, [refreshMe]);
 
   const needsTurnstile = Boolean(turnstileSiteKey);
+  const isDev = process.env.NODE_ENV === "development";
 
   const experienceBlocked =
     paid === false &&
@@ -591,7 +591,11 @@ export function ScanForm() {
                 (paid === true ||
                   (!quotaBypass &&
                     (userAlreadyUsedFree || deviceAlreadyUsedFree || ipAlreadyUsedFree)) ||
-                  (!quotaBypass && freeGlobalRemaining !== null && freeGlobalLimit !== null)) ? (
+                  (!quotaBypass && freeGlobalRemaining !== null && freeGlobalLimit !== null) ||
+                  (isDev &&
+                    quotaBypass &&
+                    freeGlobalRemaining !== null &&
+                    freeGlobalLimit !== null)) ? (
                   <div className="space-y-3 rounded-xl border border-outline-variant/15 bg-surface-container-lowest px-3 py-3 text-left text-xs text-foreground-muted shadow-sm">
                     {paid === true ? (
                       <p className="text-foreground-subtle">你嘅帳戶唔受體驗額度限制。</p>
@@ -607,7 +611,9 @@ export function ScanForm() {
                       <p className="text-primary">
                         呢個 IP 已用過體驗額度。聽日再試、換網絡，或聯絡我哋。
                       </p>
-                    ) : !quotaBypass && freeGlobalRemaining !== null && freeGlobalLimit !== null ? (
+                    ) : freeGlobalRemaining !== null &&
+                      freeGlobalLimit !== null &&
+                      (!quotaBypass || isDev) ? (
                       <div className="border-l-2 border-primary/35 pl-3">
                         <p className="font-medium text-primary">額度說明</p>
                         <p className="mt-1 text-foreground-subtle">
@@ -615,6 +621,11 @@ export function ScanForm() {
                           <span className="font-semibold tabular-nums text-primary">{freeGlobalRemaining}</span>
                           ／{freeGlobalLimit} 個名額（先到先得）。
                         </p>
+                        {quotaBypass && isDev ? (
+                          <p className="mt-2 text-[10px] leading-snug text-on-surface-variant">
+                            開發模式：本機已略過額度限制，仍可照常分析。
+                          </p>
+                        ) : null}
                       </div>
                     ) : null}
                   </div>
@@ -623,7 +634,6 @@ export function ScanForm() {
             )}
           </div>
         </section>
-        <QuotaTrialSubtleNote />
         <ReportDepthSection />
         </>
       ) : null}
