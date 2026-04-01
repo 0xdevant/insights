@@ -20,11 +20,11 @@ Push to `main` runs `.github/workflows/deploy.yml` when `CLOUDFLARE_API_TOKEN` a
 
 ## Scripts
 
-| Command | Purpose |
-|---------|---------|
-| `npm run merge-env` | Preview env keys from `.env.example` missing in `.env` |
+| Command                   | Purpose                                                |
+| ------------------------- | ------------------------------------------------------ |
+| `npm run merge-env`       | Preview env keys from `.env.example` missing in `.env` |
 | `npm run merge-env:apply` | Append those lines to `.env` (writes `.env.bak` first) |
-| `npm run dev` | Next.js dev server |
-| `npm run build` | Next.js production build |
-| `npm run deploy` | OpenNext build + `wrangler deploy` |
-| `npm run preview` | Local preview in Workers runtime |
+| `npm run dev`             | Next.js dev server                                     |
+| `npm run build`           | Next.js production build                               |
+| `npm run deploy`          | OpenNext build + `wrangler deploy`                     |
+| `npm run preview`         | Local preview in Workers runtime                       |

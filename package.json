@@ -42,5 +42,9 @@
     "tailwindcss": "^3.4.1",
     "typescript": "^5",
     "wrangler": "^4.78.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/0xdevant/insights.git"
   }
 }

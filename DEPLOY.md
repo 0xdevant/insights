@@ -37,7 +37,11 @@ In Cloudflare Dashboard → **My Profile** → **API Tokens** → create a token
 
 Or use a template that includes **Cloudflare Workers** deploy permissions.
 
-## 2. GitHub repository secrets
+## 2. GitHub repository name (optional)
+
+To match the product name, rename the repo to **`insights`**: **Settings** → **General** → **Repository name** → `insights` → **Rename**. GitHub redirects `…/crawlme` to the new URL. Then update your local remote if you like: `git remote set-url origin https://github.com/0xdevant/insights.git`.
+
+## 3. GitHub repository secrets
 
 In your GitHub repo → **Settings** → **Secrets and variables** → **Actions** → **New repository secret**:
 
@@ -51,7 +55,7 @@ In your GitHub repo → **Settings** → **Secrets and variables** → **Actions
 
 After secrets are set, every push to `main` runs `.github/workflows/deploy.yml`.
 
-## 3. Worker secrets & vars (runtime)
+## 4. Worker secrets & vars (runtime)
 
 `VENICE_API_KEY`, **`CLERK_SECRET_KEY`** (required for auth middleware — use `sk_live_…` for production), `STRIPE_*`, `TURNSTILE_SECRET_KEY`, `FREE_GLOBAL_DAILY_SCANS`, `INSIGHTS_QUOTA_BYPASS_IPS`, etc. are read at **runtime** on the Worker.
 
@@ -68,18 +72,18 @@ npx wrangler secret put VENICE_API_KEY
 
 Use the same names as `.env.example`. Do **not** commit real values.
 
-## 4. Domain & URLs
+## 5. Domain & URLs
 
 1. **Workers** → **insights** → **Custom domains** → add `seo.clawify.dev` (or your hostname).
 2. Set **`NEXT_PUBLIC_APP_URL`** (and production env) to that URL for checkout redirects.
 3. **Stripe** Dashboard → webhook endpoint: `https://<your-domain>/api/webhooks/stripe`.
 
-## 5. Deploy
+## 6. Deploy
 
 - **Automatic:** push to `main` (workflow `.github/workflows/deploy.yml`).
 - **Manual:** `npm run deploy` locally (requires `wrangler` auth and env).
 
-## 6. Smoke checks
+## 7. Smoke checks
 
 - `GET /` loads.
 - Free scan (with Turnstile if enabled) returns JSON.
