@@ -17,7 +17,7 @@ const nextConfig: NextConfig = {
   },
   experimental: {
     // Tree-shake barrel imports (smaller client bundles for these packages)
-    optimizePackageImports: ["@clerk/nextjs", "@clerk/themes", "@marsidev/react-turnstile"],
+    optimizePackageImports: ["@marsidev/react-turnstile"],
   },
 };
 

@@ -1,3 +1,4 @@
+import { normalizeAndAssertSafeUrl } from "@/lib/ssrf";
 import { SITE_URL } from "@/lib/site";
 
 const MAX_BYTES = 2_000_000;
@@ -88,7 +89,8 @@ export async function fetchPageHtml(targetUrl: string): Promise<FetchPageResult>
       if (!loc) {
         throw new Error("伺服器回傳無效重新導向，請試用其他網址。");
       }
-      current = new URL(loc, current).toString();
+      // A public page can redirect to a private address, so every hop is checked.
+      current = (await normalizeAndAssertSafeUrl(new URL(loc, current).href)).href;
       continue;
     }
 

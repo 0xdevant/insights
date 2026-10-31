@@ -50,22 +50,19 @@ In your GitHub repo → **Settings** → **Secrets and variables** → **Actions
 | `CLOUDFLARE_API_TOKEN`           | Wrangler deploy — create under [API Tokens](https://dash.cloudflare.com/profile/api-tokens) (Workers + KV + R2 as needed) |
 | `CLOUDFLARE_ACCOUNT_ID`          | From `npx wrangler whoami` or Workers dashboard               |
 | `CLOUDFLARE_KV_NAMESPACE_ID`     | Optional if KV id is already committed in `wrangler.jsonc`    |
-| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | **Required** for Clerk: must match production instance (`pk_live_…`); baked into the build — without it, `/` can return **500** |
 | `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | **Public** Turnstile site key (`0x…`) — baked into the client at build time. **Required** if you use Turnstile: without it, the widget never renders. **Do not** put `TURNSTILE_SECRET_KEY` here (that stays on the Worker only). |
 
 After secrets are set, every push to `main` runs `.github/workflows/deploy.yml`.
 
 ## 4. Worker secrets & vars (runtime)
 
-`VENICE_API_KEY`, **`CLERK_SECRET_KEY`** (required for auth middleware — use `sk_live_…` for production), `STRIPE_*`, `TURNSTILE_SECRET_KEY`, `FREE_GLOBAL_DAILY_SCANS`, `INSIGHTS_QUOTA_BYPASS_IPS`, etc. are read at **runtime** on the Worker.
-
-**Clerk:** Set both **GitHub** `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` (build) and **Worker** `CLERK_SECRET_KEY` (runtime). Missing either often causes **Internal Server Error** on every page (middleware runs on all routes).
+`VENICE_API_KEY`, `STRIPE_*`, `TURNSTILE_SECRET_KEY`, `FREE_GLOBAL_DAILY_SCANS`, `INSIGHTS_QUOTA_BYPASS_IPS`, etc. are read at **runtime** on the Worker.
 
 **Turnstile:** Use **two** different keys: **`NEXT_PUBLIC_TURNSTILE_SITE_KEY`** in **GitHub Actions** (same value as Turnstile “Site Key” in the dashboard — public) and **`TURNSTILE_SECRET_KEY`** only on the **Worker** (secret key). If the Worker has the secret but GitHub never received the **public** site key, users can see「請先完成人機驗證」with **no visible widget** — add the GitHub secret and redeploy.
 
 **Turnstile hostname:** In [Cloudflare Turnstile](https://dash.cloudflare.com/?to=/:account/turnstile) → your widget → **Hostname Management**, add **`seo.clawify.dev`** (and `www.seo.clawify.dev` if you use it). If the production hostname is missing, the iframe may not render or will error.
 
-**Turnstile widget not showing after login:** (1) Confirm **`NEXT_PUBLIC_TURNSTILE_SITE_KEY`** is set as a **GitHub Actions** secret and redeploy — it is inlined at **build** time; setting only `TURNSTILE_SECRET_KEY` on the Worker is not enough for the client widget. (2) Confirm hostname allowlist above. (3) The widget appears **after** sign-in; logged-out users see an explanation first.
+**Turnstile widget not showing:** (1) Confirm **`NEXT_PUBLIC_TURNSTILE_SITE_KEY`** is set as a **GitHub Actions** secret and redeploy — it is inlined at **build** time; setting only `TURNSTILE_SECRET_KEY` on the Worker is not enough for the client widget. (2) Confirm hostname allowlist above.
 
 Set them in **Workers & Pages** → **insights** → **Settings** → **Variables and Secrets**, or:
 
@@ -103,5 +100,4 @@ If deploy fails on **KV id**, fix the id in `wrangler.jsonc` or set `CLOUDFLARE_
 
 ### Internal Server Error (500) on `GET /`
 
-1. **Clerk:** Confirm `CLERK_SECRET_KEY` is set on the Worker and `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` is in GitHub Actions secrets (redeploy after adding). Keys must be from the **same** Clerk production instance.
-2. **Cloudflare Workers** → **insights** → **Logs** → look for the thrown message (often Clerk or missing env).
+1. **Cloudflare Workers** → **insights** → **Logs** → look for the thrown message (often missing env).

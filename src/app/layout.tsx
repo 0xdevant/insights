@@ -1,11 +1,6 @@
 import type { Metadata, Viewport } from "next";
-import { ClerkProvider } from "@clerk/nextjs";
-import { zhTW } from "@clerk/localizations";
-import { shadcn } from "@clerk/themes";
 import { JetBrains_Mono, Manrope, Noto_Sans_TC } from "next/font/google";
 import Link from "next/link";
-import { AuthHeader } from "@/components/AuthHeader";
-import { InAppBrowserBanner } from "@/components/InAppBrowserBanner";
 import { SiteHeaderLogo } from "@/components/SiteHeaderLogo";
 import { QUOTA_TRIAL_BODY } from "@/lib/quota-copy";
 import { CLAWIFY_URL, SITE_URL } from "@/lib/site";
@@ -70,34 +65,25 @@ export default function RootLayout({
       <body
         className={`${manrope.variable} ${notoSansTc.variable} ${jetbrains.variable} bg-background text-foreground antialiased`}
       >
-        <ClerkProvider
-          localization={zhTW}
-          appearance={{
-            baseTheme: shadcn,
-          }}
-        >
-          <a href="#main-content" className="skip-link">
-            跳至主要內容
-          </a>
-          <header className="sticky top-0 z-40 border-b border-outline-variant/20 bg-surface/85 shadow-ambient backdrop-blur-md">
-            <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3.5 sm:px-6">
-              <div className="flex min-w-0 flex-col gap-0.5 sm:flex-row sm:items-center sm:gap-3">
-                <SiteHeaderLogo />
-                <a
-                  href={CLAWIFY_URL}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="insights-focus-ring inline-flex min-h-[44px] items-center text-[10px] font-normal tracking-wide text-secondary transition hover:text-on-surface"
-                >
-                  Powered by Clawify
-                </a>
-              </div>
-              <AuthHeader />
+        <a href="#main-content" className="skip-link">
+          跳至主要內容
+        </a>
+        <header className="sticky top-0 z-40 border-b border-outline-variant/20 bg-surface/85 shadow-ambient backdrop-blur-md">
+          <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3.5 sm:px-6">
+            <div className="flex min-w-0 flex-col gap-0.5 sm:flex-row sm:items-center sm:gap-3">
+              <SiteHeaderLogo />
+              <a
+                href={CLAWIFY_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="insights-focus-ring inline-flex min-h-[44px] items-center text-[10px] font-normal tracking-wide text-secondary transition hover:text-on-surface"
+              >
+                Powered by Clawify
+              </a>
             </div>
-          </header>
-          <InAppBrowserBanner />
-          {children}
-        </ClerkProvider>
+          </div>
+        </header>
+        {children}
       </body>
     </html>
   );

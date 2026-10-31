@@ -1,4 +1,3 @@
-import { auth } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import {
@@ -7,13 +6,10 @@ import {
   isDeviceFreeScanUsed,
   isIpFreeScanUsed,
   isQuotaBypassIp,
-  isUserFreeScanUsed,
 } from "@/lib/quota";
 import { getClientIp } from "@/lib/request-ip";
 
 export async function GET(request: NextRequest) {
-  const { userId } = await auth();
-
   const ip = getClientIp(request);
   const bypass = isQuotaBypassIp(ip);
   const globalLimit = getFreeGlobalDailyLimit();
@@ -33,10 +29,6 @@ export async function GET(request: NextRequest) {
     });
   }
 
-  let userAlreadyUsedFree = false;
-  if (userId) {
-    userAlreadyUsedFree = await isUserFreeScanUsed(userId);
-  }
   let deviceAlreadyUsedFree = false;
   if (validDevice) {
     deviceAlreadyUsedFree = await isDeviceFreeScanUsed(validDevice);
@@ -47,7 +39,6 @@ export async function GET(request: NextRequest) {
   return NextResponse.json({
     quotaBypass: false,
     ipAlreadyUsedFree,
-    userAlreadyUsedFree,
     deviceAlreadyUsedFree,
     freeGlobalRemaining,
     freeGlobalLimit: globalLimit,

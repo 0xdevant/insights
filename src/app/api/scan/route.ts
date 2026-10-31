@@ -1,4 +1,3 @@
-import { auth } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getEnv, requireEnv } from "@/lib/env";
@@ -9,10 +8,8 @@ import {
   isDeviceFreeScanUsed,
   isIpFreeScanUsed,
   isQuotaBypassIp,
-  isUserFreeScanUsed,
   markDeviceFreeScanUsed,
   markIpFreeScanUsed,
-  markUserFreeScanUsed,
   refundGlobalFreeScanQuota,
 } from "@/lib/quota";
 import { extractSeoFacts, type SeoFacts } from "@/lib/seo-extract";
@@ -58,18 +55,8 @@ const bodySchema = z.object({
 });
 
 export async function POST(request: NextRequest) {
+  let consumedGlobal = false;
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json(
-        {
-          error: "請先登入或註冊會員，先可以使用營銷分析。",
-          signInRequired: true,
-        },
-        { status: 401 },
-      );
-    }
-
     const turnstileSecret = getEnv("TURNSTILE_SECRET_KEY");
     const json = (await request.json()) as unknown;
     const parsed = bodySchema.safeParse(json);
@@ -109,20 +96,8 @@ export async function POST(request: NextRequest) {
     const bypass = isQuotaBypassIp(ip);
 
     let freeGlobalRemaining: number | undefined;
-    let consumedGlobal = false;
 
     if (!bypass) {
-      if (await isUserFreeScanUsed(userId)) {
-        return NextResponse.json(
-          {
-            error: "此帳戶已使用過體驗額度內嘅分析。聯絡我哋。",
-            upgrade: true,
-            userFreeExhausted: true,
-          },
-          { status: 429 },
-        );
-      }
-
       if (await isIpFreeScanUsed(ip)) {
         return NextResponse.json(
           {
@@ -337,57 +312,31 @@ export async function POST(request: NextRequest) {
       ? fetchPageSpeedInsightsMobile(facts.finalUrl, psiKey)
       : Promise.resolve(null);
 
-    let text: string;
-    let usage: {
-      promptTokens?: number;
-      completionTokens?: number;
-      totalTokens?: number;
-      cfRay?: string;
+    const [out, psi] = await Promise.all([
+      veniceChatJson({
+        apiKey,
+        model,
+        messages,
+        veniceParameters: { include_venice_system_prompt: false },
+      }),
+      psiPromise,
+    ]);
+    const pagespeedInsights: PageSpeedInsightsPayload | null = psi;
+    const text = out.text;
+    const usage = {
+      promptTokens:
+        (discoveryUsage?.promptTokens ?? 0) + (out.usage.promptTokens ?? 0),
+      completionTokens:
+        (discoveryUsage?.completionTokens ?? 0) +
+        (out.usage.completionTokens ?? 0),
+      totalTokens:
+        (discoveryUsage?.totalTokens ?? 0) + (out.usage.totalTokens ?? 0),
+      cfRay: out.usage.cfRay,
     };
 
-    let pagespeedInsights: PageSpeedInsightsPayload | null = null;
-
-    try {
-      const [out, psi] = await Promise.all([
-        veniceChatJson({
-          apiKey,
-          model,
-          messages,
-          veniceParameters: { include_venice_system_prompt: false },
-        }),
-        psiPromise,
-      ]);
-      pagespeedInsights = psi;
-      text = out.text;
-      usage = {
-        promptTokens:
-          (discoveryUsage?.promptTokens ?? 0) + (out.usage.promptTokens ?? 0),
-        completionTokens:
-          (discoveryUsage?.completionTokens ?? 0) +
-          (out.usage.completionTokens ?? 0),
-        totalTokens:
-          (discoveryUsage?.totalTokens ?? 0) + (out.usage.totalTokens ?? 0),
-        cfRay: out.usage.cfRay,
-      };
-    } catch (e) {
-      if (consumedGlobal) {
-        await refundGlobalFreeScanQuota();
-      }
-      throw e;
-    }
-
-    let obj: Record<string, unknown>;
-    try {
-      obj = parseModelJsonObject(text);
-    } catch (e) {
-      if (consumedGlobal) {
-        await refundGlobalFreeScanQuota();
-      }
-      throw e;
-    }
+    const obj = parseModelJsonObject(text);
 
     if (!bypass) {
-      await markUserFreeScanUsed(userId);
       await markIpFreeScanUsed(ip);
       if (validDeviceId) await markDeviceFreeScanUsed(validDeviceId);
     }
@@ -420,6 +369,7 @@ export async function POST(request: NextRequest) {
         : {}),
     });
   } catch (e) {
+    if (consumedGlobal) await refundGlobalFreeScanQuota();
     const detail = formatErrorCauseChain(e);
     if (e instanceof Error) {
       console.error("[api/scan]", detail, e.stack ?? "");
